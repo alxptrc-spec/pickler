@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,7 +48,7 @@ table{border-collapse:collapse;width:100%}
 
 /* Layout */
 .app{display:flex;flex-direction:column;min-height:100dvh}
-.topbar{background:var(--surface);border-bottom:1px solid var(--divider);padding:0.75rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+.topbar{background:var(--surface);border-bottom:1px solid var(--divider);padding:0.75rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:1000;box-shadow:var(--shadow-sm);overflow:visible}
 .logo{display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:1.05rem;color:var(--text);margin-right:auto}
 .logo svg{color:var(--primary)}
 .nav-tabs{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.35rem}
@@ -102,9 +103,9 @@ tbody tr:hover{background:var(--surface-off)}
 /* KPI row */
 .kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:0}
 
-.kpi{background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-lg);padding:1rem 1.25rem}
-.kpi-val{font-size:1.75rem;font-weight:700;line-height:1;margin-bottom:0.25rem}
-.kpi-label{font-size:0.78rem;color:var(--muted);font-weight:500}
+.kpi{background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-lg);padding:1.1rem 1.4rem}
+.kpi-val{font-size:2.6rem;font-weight:800;line-height:1;margin-bottom:0.25rem}
+.kpi-label{font-size:0.82rem;color:var(--muted);font-weight:500;margin-top:0.15rem}
 
 /* Btn */
 .btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:var(--r-md);font-size:0.875rem;font-weight:600;transition:background var(--trans),color var(--trans),box-shadow var(--trans)}
@@ -538,8 +539,180 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 [data-theme="dark"] #confirm-modal { background: #2a2927 !important; border-color: #6C63FF !important; color: #f0ede8; }
 [data-theme="dark"] #confirm-title { color: #f0ede8; }
 [data-theme="dark"] #confirm-body { color: #a09d99; }
+
+/* ── Save dropdown (details/summary) ───────────────────────────── */
+.save-dropdown-wrap { position:relative; display:inline-block; }
+.save-dropdown-wrap summary { list-style:none; cursor:pointer; }
+.save-dropdown-wrap summary::-webkit-details-marker { display:none; }
+#save-dropdown-menu {
+  display:none; position:absolute; right:0; top:calc(100% + 4px);
+  background:var(--surface); border:1px solid var(--divider);
+  border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.18);
+  z-index:2000; min-width:210px; overflow:hidden;
+}
+.save-dropdown-wrap[open] #save-dropdown-menu { display:block; }
+#save-dropdown-menu button {
+  display:block; width:100%; text-align:left;
+  padding:0.6rem 1rem; border:none; background:none;
+  cursor:pointer; font-size:0.85rem; color:var(--text);
+  font-family:inherit;
+}
+#save-dropdown-menu button:hover { background:var(--surface-off2); }
+#save-dropdown-menu hr { margin:0; border:none; border-top:1px solid var(--divider); }
+
+
+/* ── Bulk select & custom checkboxes ─────────────────── */
+#attention-tbody tr.selected-row { background: oklch(from var(--primary) l c h / 0.07); }
+.custom-chk {
+  appearance: none; -webkit-appearance: none;
+  width: 17px; height: 17px; min-width: 17px;
+  border: 2px solid var(--divider);
+  border-radius: 5px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s;
+  vertical-align: middle;
+}
+.custom-chk:hover { border-color: var(--primary); }
+.custom-chk:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.custom-chk:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px; top: 0px;
+  width: 5px; height: 9px;
+  border: 2px solid #fff;
+  border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+.custom-chk:indeterminate {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.custom-chk:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 2px; top: 5px;
+  width: 9px; height: 2px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+
+/* ── Sortable column headers ──────────────────────────── */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.sortable-th:hover { color: var(--primary); }
+.sort-arrow { display:inline-block; width:1em; text-align:center; font-size:0.7em; opacity:0.3; }
+.sort-arrow.sort-arrow-active { opacity:1; color: var(--primary); }
+.sort-arrow.sort-asc::after  { content: ' ▲'; }
+.sort-arrow.sort-desc::after { content: ' ▼'; }
+
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer>
+// ── Save dropdown closed via details element natively ──────────────────────
+function closeSaveDropdown() { const d=document.getElementById("save-details"); if(d) d.removeAttribute("open"); }
+
+
+// ── Bulk select ───────────────────────────────────────────────────────────────
+function getCheckedIds() {
+  return Array.from(document.querySelectorAll('.row-chk:checked')).map(c => parseInt(c.dataset.id));
+}
+function updateBulkBar() {
+  const ids = getCheckedIds();
+  const bar = document.getElementById('bulk-bar');
+  const countEl = document.getElementById('bulk-count');
+  const labelEl = document.getElementById('bulk-delete-label');
+  const selectAll = document.getElementById('select-all-chk');
+  if (bar) bar.style.display = ids.length > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = ids.length + ' session' + (ids.length !== 1 ? 's' : '') + ' selected';
+  if (labelEl) labelEl.textContent = ids.length + ' session' + (ids.length !== 1 ? 's' : '');
+  // Update select-all indeterminate state
+  const total = document.querySelectorAll('.row-chk').length;
+  if (selectAll) {
+    selectAll.checked = ids.length === total && total > 0;
+    selectAll.indeterminate = ids.length > 0 && ids.length < total;
+  }
+}
+function toggleSelectAll(chk) {
+  document.querySelectorAll('.row-chk').forEach(c => c.checked = chk.checked);
+  updateBulkBar();
+}
+function clearSelection() {
+  document.querySelectorAll('.row-chk').forEach(c => c.checked = false);
+  const selectAll = document.getElementById('select-all-chk');
+  if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+  updateBulkBar();
+}
+function bulkDelete() {
+  const ids = getCheckedIds();
+  if (!ids.length) return;
+  if (!window.confirm('Delete ' + ids.length + ' session' + (ids.length > 1 ? 's' : '') + '? You can undo with the Undo button.')) return;
+  // Push one undo snapshot for all
+  const snaps = ids.map(id => ({ type:'delete', session: JSON.parse(JSON.stringify(sessions.find(x=>x.id===id))), idx: sessions.findIndex(x=>x.id===id) }));
+  pushUndo({ type:'bulk-delete', snaps });
+  sessions = sessions.filter(s => !ids.includes(s.id));
+  saveSessions();
+  clearSelection();
+  renderAll();
+}
+
+
+// ── Column sorting ────────────────────────────────────────────────────────────
+let dashSortCol = 'date';
+let dashSortAsc = false; // default: date descending (newest first)
+
+function setSort(col) {
+  if (dashSortCol === col) {
+    dashSortAsc = !dashSortAsc; // toggle direction
+  } else {
+    dashSortCol = col;
+    dashSortAsc = col === 'client' || col === 'visit'; // alpha cols default asc
+  }
+  renderDashboard();
+}
+
+function sortSessions(arr) {
+  return arr.slice().sort((a, b) => {
+    let va, vb;
+    if (dashSortCol === 'client') {
+      va = a.client.toLowerCase(); vb = b.client.toLowerCase();
+    } else if (dashSortCol === 'visit') {
+      va = a.visit.toLowerCase(); vb = b.visit.toLowerCase();
+    } else if (dashSortCol === 'date') {
+      va = a.appt; vb = b.appt;
+    } else if (dashSortCol === 'steps') {
+      va = a.steps.filter(Boolean).length;
+      vb = b.steps.filter(Boolean).length;
+    }
+    if (va < vb) return dashSortAsc ? -1 : 1;
+    if (va > vb) return dashSortAsc ? 1 : -1;
+    return 0;
+  });
+}
+
+function updateSortArrows() {
+  const cols = ['client','visit','date','steps'];
+  cols.forEach(col => {
+    const th = document.getElementById('th-' + col);
+    if (!th) return;
+    const arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    if (dashSortCol === col) {
+      arrow.className = 'sort-arrow sort-arrow-active ' + (dashSortAsc ? 'sort-asc' : 'sort-desc');
+    } else {
+      arrow.className = 'sort-arrow';
+    }
+  });
+}
+
+</script>
 </head>
 <body>
 <div class="app">
@@ -562,10 +735,16 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
     </div>
     <div class="nav-util-tabs">
       <button class="nav-tab undo-btn" id="undo-btn" onclick="doUndo()" disabled title="Nothing to undo">↩ Undo</button>
-      <button class="nav-util-btn" id="autobackup-btn" onclick="onAutoBackupBtn()" title="Auto-save backups to a file on your computer">💾 Auto-Backup: Off</button>
-      <button class="nav-util-btn" id="drive-connect-btn" onclick="onDriveConnectBtn()" title="Auto-save backups directly to Google Drive">🔗 Drive: Off</button>
-      <button class="nav-util-btn" onclick="exportData()" title="Save a backup of your progress">⬇ Export</button>
-      <button class="nav-util-btn" onclick="document.getElementById('import-file').click()" title="Restore from a backup file">⬆ Import</button>
+      <details class="save-dropdown-wrap" id="save-details">
+        <summary class="nav-util-btn save-dropdown-btn" title="Save options">💾 Save ▾</summary>
+        <div id="save-dropdown-menu">
+          <button id="autobackup-btn" onclick="onAutoBackupBtn();document.getElementById('save-details').removeAttribute('open')" title="Auto-save backups to a file on your computer">💾 Auto-Backup: Off</button>
+          <button id="drive-connect-btn" onclick="onDriveConnectBtn();document.getElementById('save-details').removeAttribute('open')" title="Auto-save backups directly to Google Drive" style="display:flex;align-items:center">Connect Drive <svg width="14" height="14" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:5px;flex-shrink:0"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a7.3 7.3 0 003.3 3.3z" fill="#0066da"/><path d="M43.65 25L29.9 1.2A7.3 7.3 0 0026.6 4.5L3.3 45.4A7.3 7.3 0 000 53.7h27.5z" fill="#00ac47"/><path d="M73.55 76.8a7.3 7.3 0 003.3-3.3l1.6-2.75 7.65-13.25a7.3 7.3 0 000-7.3H59.8l5.85 11.5z" fill="#ea4335"/><path d="M43.65 25L57.4 1.2A7.3 7.3 0 0054.1 0H33.2a7.3 7.3 0 00-3.3 1.2z" fill="#00832d"/><path d="M59.8 53.7h27.5a7.3 7.3 0 00-1.6-7.3L62.4 7.8a7.3 7.3 0 00-5-3.3L43.65 25z" fill="#2684fc"/><path d="M27.5 53.7l-13.75 23.8A7.3 7.3 0 0017.1 78h53.1a7.3 7.3 0 003.6-1.2L59.8 53.7z" fill="#ffba00"/></svg></button>
+          <hr>
+          <button onclick="exportData();document.getElementById('save-details').removeAttribute('open')" title="Save a backup of your progress">⬇ Export</button>
+          <button onclick="document.getElementById('import-file').click();document.getElementById('save-details').removeAttribute('open')" title="Restore from a backup file">⬆ Import</button>
+        </div>
+      </details>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
     </div>
   </nav>
@@ -580,15 +759,15 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
   <!-- DASHBOARD -->
   <div class="view active" id="view-dashboard">
     <!-- DASHBOARD TOP: KPIs left 2/3, mini calendar right 1/3 -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem;align-items:start">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem;align-items:stretch">
       <div class="kpi-grid" id="kpi-grid" style="margin-bottom:0"></div>
-      <div class="card" id="cal-panel" style="padding:0.75rem;min-height:0">
+      <div class="card" id="cal-panel" style="padding:0.75rem;min-height:0;display:flex;flex-direction:column;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
           <button class="c-btn c-btn-ghost" style="padding:0.15rem 0.4rem;font-size:0.8rem;min-width:0" onclick="calNav(-1)">‹</button>
           <div id="cal-month-label" style="font-weight:700;font-size:0.75rem;text-align:center"></div>
           <button class="c-btn c-btn-ghost" style="padding:0.15rem 0.4rem;font-size:0.8rem;min-width:0" onclick="calNav(1)">›</button>
         </div>
-        <div id="cal-grid"></div>
+        <div id="cal-grid" style="flex:1;overflow:hidden;min-height:0"></div>
         <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;font-size:0.65rem;color:var(--muted)">
           <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:2px;vertical-align:middle"></span>Active</span>
           <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:2px;vertical-align:middle"></span>Done</span>
@@ -618,8 +797,21 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
             <button class="btn btn-primary" id="add-btn" onclick="openAddModal()">+ Add Session</button>
           </div>
         </div>
+        <div id="bulk-bar" style="display:none;align-items:center;gap:1rem;padding:0.65rem 1rem;background:oklch(from var(--error,#ef4444) l c h / 0.07);border:1.5px solid oklch(from var(--error,#ef4444) l c h / 0.3);border-radius:10px;margin-bottom:0.6rem">
+          <span style="font-size:1rem;font-weight:700;color:var(--error,#ef4444)" id="bulk-count">0 selected</span>
+          <button onclick="bulkDelete()" style="padding:0.45rem 1.1rem;background:var(--error,#ef4444);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.9rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 2px 8px oklch(from var(--error,#ef4444) l c h / 0.3)">🗑 Delete <span id="bulk-delete-label">selected</span></button>
+          <button onclick="clearSelection()" style="padding:0.45rem 0.9rem;background:none;border:1px solid var(--divider);border-radius:7px;cursor:pointer;font-size:0.85rem;color:var(--muted);margin-left:auto">✕ Cancel</button>
+        </div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Client</th><th>Visit</th><th>Date</th><th>Status</th><th>Steps</th></tr></thead>
+          <thead><tr>
+  <th style="width:32px;padding:0.4rem 0.5rem"><input type="checkbox" id="select-all-chk" onchange="toggleSelectAll(this)" title="Select all" class="custom-chk"></th>
+  <th class="sortable-th" onclick="setSort('client')" id="th-client">Client <span class="sort-arrow"></span></th>
+  <th class="sortable-th" onclick="setSort('visit')" id="th-visit">Visit <span class="sort-arrow"></span></th>
+  <th class="sortable-th" onclick="setSort('date')" id="th-date">Date <span class="sort-arrow sort-arrow-active sort-desc"></span></th>
+  <th>Status</th>
+  <th class="sortable-th" onclick="setSort('steps')" id="th-steps">Steps <span class="sort-arrow"></span></th>
+  <th></th>
+</tr></thead>
           <tbody id="attention-tbody"></tbody>
         </table></div>
       </div>
@@ -863,6 +1055,14 @@ function doUndo() {
     const insertAt = Math.min(snap.idx, sessions.length);
     sessions.splice(insertAt, 0, restored);
     saveSessions();
+  } else if (snap.type === 'bulk-delete') {
+    // Re-insert all deleted sessions at their original indices
+    const sorted = snap.snaps.slice().sort((a,b) => a.idx - b.idx);
+    sorted.forEach(s => {
+      const insertAt = Math.min(s.idx, sessions.length);
+      sessions.splice(insertAt, 0, Object.assign({}, s.session));
+    });
+    saveSessions();
   } else if (snap.type === 'add') {
     // Remove the session that was just added
     sessions = sessions.filter(s => s.id !== snap.id);
@@ -891,10 +1091,9 @@ function loadPersistedSessions() {
   if (!saved) return;
   try {
     const parsed = JSON.parse(saved);
-    parsed.forEach(p => {
-      const s = sessions.find(x => x.id === p.id);
-      if (s) { s.steps = p.steps; s.status = deriveStatus(s.steps); }
-    });
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      sessions = parsed; // full restore — preserves adds, deletes, edits
+    }
   } catch(e) {}
 }
 
@@ -973,7 +1172,7 @@ async function onAutoBackupBtn() {
   }
   try {
     const handle = await window.showSaveFilePicker({
-      suggestedName: 'doc-tracker-autobackup.json',
+      suggestedName: 'pickler-autobackup.json',
       types: [{ description: 'JSON backup', accept: { 'application/json': ['.json'] } }]
     });
     autoBackupHandle = handle;
@@ -1035,7 +1234,7 @@ async function writeAutoBackupNow() {
 // Uses the 'drive.file' scope, so the app can only see/edit files it creates
 // itself — not the rest of the user's Drive.
 
-let driveClientId = localStorage.getItem('driveClientId') || '';
+let driveClientId = localStorage.getItem('driveClientId') || '987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com';
 let driveTokenClient = null;
 let driveAccessToken = null;
 let driveTokenExpiry = 0;
@@ -1048,23 +1247,24 @@ let drivePendingReject = null;
 function setDriveBtn(state) {
   const btn = document.getElementById('drive-connect-btn');
   if (!btn) return;
+  const icon = '<svg width="14" height="14" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:5px;flex-shrink:0"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a7.3 7.3 0 003.3 3.3z" fill="#0066da"/><path d="M43.65 25L29.9 1.2A7.3 7.3 0 0026.6 4.5L3.3 45.4A7.3 7.3 0 000 53.7h27.5z" fill="#00ac47"/><path d="M73.55 76.8a7.3 7.3 0 003.3-3.3l1.6-2.75 7.65-13.25a7.3 7.3 0 000-7.3H59.8l5.85 11.5z" fill="#ea4335"/><path d="M43.65 25L57.4 1.2A7.3 7.3 0 0054.1 0H33.2a7.3 7.3 0 00-3.3 1.2z" fill="#00832d"/><path d="M59.8 53.7h27.5a7.3 7.3 0 00-1.6-7.3L62.4 7.8a7.3 7.3 0 00-5-3.3L43.65 25z" fill="#2684fc"/><path d="M27.5 53.7l-13.75 23.8A7.3 7.3 0 0017.1 78h53.1a7.3 7.3 0 003.6-1.2L59.8 53.7z" fill="#ffba00"/></svg>';
   if (state === 'on') {
-    btn.textContent = '🔗 Drive: On';
+    btn.innerHTML = 'Drive: On ' + icon;
     btn.title = 'Auto-saving to Google Drive — click to reconnect or change account';
     btn.style.color = 'var(--success)';
   } else if (state === 'connecting') {
-    btn.textContent = '🔗 Drive: Connecting…';
+    btn.innerHTML = 'Drive: Connecting… ' + icon;
     btn.style.color = 'var(--muted)';
   } else if (state === 'needs-permission') {
-    btn.textContent = '🔗 Drive: Click to reconnect';
+    btn.innerHTML = 'Drive: Reconnect ' + icon;
     btn.title = 'Your Drive session expired — click to reconnect';
     btn.style.color = 'var(--warning)';
   } else if (state === 'error') {
-    btn.textContent = '🔗 Drive: Error — retry';
+    btn.innerHTML = 'Drive: Error ' + icon;
     btn.title = 'Something went wrong — click to try again';
     btn.style.color = 'var(--error)';
   } else {
-    btn.textContent = '🔗 Drive: Off';
+    btn.innerHTML = 'Connect Drive ' + icon;
     btn.title = 'Auto-save backups directly to Google Drive';
     btn.style.color = '';
   }
@@ -1126,7 +1326,7 @@ async function driveFindOrVerifyFile(token) {
 
 async function driveCreateFile(token, contentStr) {
   const boundary = 'doctracker' + Date.now();
-  const metadata = { name: 'doc-tracker-autobackup.json', mimeType: 'application/json' };
+  const metadata = { name: 'pickler-autobackup.json', mimeType: 'application/json' };
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: application/json\r\n\r\n${contentStr}\r\n` +
@@ -1687,7 +1887,8 @@ function renderKPIs() {
 }
 
 function sessionRow(s, showStepDots=true) {
-  return `<tr>
+  return `<tr data-id="${s.id}">
+    <td style="width:32px;padding:0.4rem 0.5rem;text-align:center"><input type="checkbox" class="row-chk custom-chk" data-id="${s.id}" onchange="updateBulkBar()"></td>
     <td><span class="client-code row-open-btn" onclick="openModal(${s.id})" title="View session details">${s.client}</span></td>
     <td style="white-space:nowrap" class="row-open-btn" onclick="openModal(${s.id})">${s.visit}</td>
     <td style="white-space:nowrap" class="row-open-btn" onclick="openModal(${s.id})">${fmtDate(s.appt)}</td>
@@ -1708,17 +1909,21 @@ function renderDashboard() {
   const filterClient = clientSel ? clientSel.value : '';
   const filterStep   = document.getElementById('dash-filter-step') ? document.getElementById('dash-filter-step').value : '';
 
-  const incomplete = sessions.filter(s => {
+  let incomplete = sessions.filter(s => {
     if (s.status === 'COMPLETE') return false;
     if (filterClient && s.client !== filterClient) return false;
     if (filterStep && s.status !== filterStep) return false;
     return true;
   });
 
+  // Apply sort
+  incomplete = sortSessions(incomplete);
+  updateSortArrows();
+
   const attnTbody = document.getElementById('attention-tbody');
   attnTbody.innerHTML = incomplete.length
     ? incomplete.map(s => sessionRow(s)).join('')
-    : '<tr><td colspan="5"><div class="empty"><div class="empty-icon">✅</div>No sessions match this filter.</div></td></tr>';
+    : '<tr><td colspan="6"><div class="empty"><div class="empty-icon">✅</div>No sessions match this filter.</div></td></tr>';
 }
 
 
@@ -2683,7 +2888,7 @@ function submitAddSession() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────
-const APP_VERSION = 'v1782170438';
+const APP_VERSION = 'v1782245740';
 // Only clear stale data when this is a genuinely new build (version stamp changed)
 const previousVersion = localStorage.getItem('appVersion');
 if (previousVersion !== APP_VERSION) {
@@ -2743,7 +2948,7 @@ document.addEventListener('keydown', e => {
   </div>
   <div style="display:flex;flex-direction:column;gap:0.85rem;font-size:0.9rem;line-height:1.6">
     <p style="margin:0;color:var(--muted)">Paste the <strong>OAuth Client ID</strong> from your Google Cloud project. This is saved only in your browser — never sent anywhere except Google.</p>
-    <input id="drive-settings-input" type="text" placeholder="xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" style="width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:0.85rem">
+    <input id="drive-settings-input" type="text" placeholder="987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com" value="987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com" style="width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:0.85rem">
     <div style="background:var(--surface-off2);border-radius:10px;padding:0.85rem;font-size:0.82rem;color:var(--muted)">
       <div style="font-weight:700;margin-bottom:0.35rem;color:var(--text)">Don't have one yet?</div>
       You'll need to create it once in <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" style="color:var(--primary)">Google Cloud Console</a> — see the setup guide for step-by-step instructions. It takes about 10 minutes.
@@ -2801,7 +3006,7 @@ document.addEventListener('keydown', e => {
       <p style="margin:0;color:var(--muted)">Keep this file in a <strong>permanent folder</strong> (e.g. Desktop → "Doc Tracker"). Export a backup every Friday. Store the backups in Google Drive or iCloud so they survive a computer wipe.</p>
     </div>
   </div>
-  <button onclick="closeSaveHelp()" style="margin-top:1.25rem;width:100%;padding:0.6rem;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9rem">Got it</button>
+  
 </div>
 
 <!-- Custom Confirm Modal -->

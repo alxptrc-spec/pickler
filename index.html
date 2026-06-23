@@ -1,0 +1,2820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinical Doc Tracker</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+<style>
+:root,[data-theme="light"]{
+  --bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;--surface-off:#f3f0ec;--surface-off2:#edeae5;
+  --divider:#dcd9d5;--border:#d4d1ca;
+  --text:#28251d;--muted:#7a7974;--faint:#bab9b4;
+  --primary:#01696f;--primary-h:#0c4e54;--primary-hl:#cedcd8;
+  --warning:#964219;--warning-hl:#ddcfc6;
+  --error:#a12c7b;--error-hl:#e0ced7;
+  --success:#437a22;--success-hl:#d4dfcc;
+  --gold:#d19900;--gold-hl:#e9e0c6;
+  --notification:#a13544;
+  --shadow-sm:0 1px 2px oklch(0.2 0.01 80/0.06);
+  --shadow-md:0 4px 12px oklch(0.2 0.01 80/0.08);
+  --r-sm:0.375rem;--r-md:0.5rem;--r-lg:0.75rem;--r-xl:1rem;--r-full:9999px;
+  --trans:180ms cubic-bezier(0.16,1,0.3,1);
+  --font:'Satoshi',sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#171614;--surface:#1c1b19;--surface-2:#201f1d;--surface-off:#1d1c1a;--surface-off2:#22211f;
+  --divider:#262523;--border:#393836;
+  --text:#cdccca;--muted:#797876;--faint:#5a5957;
+  --primary:#4f98a3;--primary-h:#227f8b;--primary-hl:#313b3b;
+  --warning:#bb653b;--warning-hl:#564942;
+  --error:#d163a7;--error-hl:#4c3d46;
+  --success:#6daa45;--success-hl:#3a4435;
+  --gold:#e8af34;--gold-hl:#4d4332;
+  --notification:#dd6974;
+  --shadow-sm:0 1px 2px oklch(0 0 0/0.2);
+  --shadow-md:0 4px 12px oklch(0 0 0/0.3);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-family:var(--font);font-size:1rem;color:var(--text);background:var(--bg);min-height:100dvh;line-height:1.5}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit;transition:color var(--trans),background var(--trans),box-shadow var(--trans)}
+input,select{font:inherit;color:inherit}
+table{border-collapse:collapse;width:100%}
+
+/* Layout */
+.app{display:flex;flex-direction:column;min-height:100dvh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--divider);padding:0.75rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+.logo{display:flex;align-items:center;gap:0.5rem;font-weight:700;font-size:1.05rem;color:var(--text);margin-right:auto}
+.logo svg{color:var(--primary)}
+.nav-tabs{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.35rem}
+.nav-main-tabs{display:flex;gap:0.25rem;flex-wrap:wrap}
+.nav-util-tabs{display:flex;gap:0.25rem;align-items:center;flex-wrap:wrap}
+.nav-util-btn{padding:0.3rem 0.6rem;border-radius:var(--r-full);font-size:0.75rem;font-weight:500;color:var(--muted);background:none;border:1px solid var(--divider);cursor:pointer;transition:color var(--trans),background var(--trans)}
+.nav-util-btn:hover{color:var(--text);background:var(--surface-off2)}
+.nav-tab{padding:0.4rem 0.85rem;border-radius:var(--r-full);font-size:0.875rem;font-weight:500;color:var(--muted);transition:color var(--trans),background var(--trans)}
+.nav-tab:hover{color:var(--text);background:var(--surface-off)}
+.nav-tab.active{color:var(--primary);background:var(--primary-hl)}
+.theme-btn{width:36px;height:36px;border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.theme-btn:hover{background:var(--surface-off);color:var(--text)}
+
+.content{flex:1;padding:1.5rem;max-width:1280px;margin:0 auto;width:100%}
+
+/* Cards / panels */
+.card{background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-xl);padding:1.25rem;box-shadow:var(--shadow-sm)}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.section-title{font-size:1rem;font-weight:700;color:var(--text)}
+.section-sub{font-size:0.8rem;color:var(--muted);margin-top:0.15rem}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:0.2rem 0.55rem;border-radius:var(--r-full);font-size:0.75rem;font-weight:600;white-space:nowrap}
+.badge-overdue{background:var(--error-hl);color:var(--error)}
+.badge-review{background:var(--warning-hl);color:var(--warning)}
+.badge-doc{background:var(--gold-hl);color:var(--gold)}
+.badge-started{background:var(--surface-off2);color:var(--muted)}
+.badge-complete{background:var(--success-hl);color:var(--success)}
+.badge-primary{background:var(--primary-hl);color:var(--primary)}
+
+/* Step dots */
+.steps{display:flex;gap:3px;align-items:center}
+.dot{width:11px;height:11px;border-radius:50%;cursor:pointer;transition:transform var(--trans),background var(--trans),border-color var(--trans);flex-shrink:0;border:1.5px solid var(--border);background:transparent}
+.dot:hover{transform:scale(1.3);border-color:var(--success);background:oklch(from var(--success) l c h / 0.15)}
+.dot.done{background:var(--success);border-color:var(--success)}
+.dot.pending{background:transparent;border:1.5px solid var(--border)}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:-0.25rem}
+table th{text-align:left;font-size:0.75rem;font-weight:600;color:var(--muted);padding:0.5rem 0.75rem;border-bottom:1px solid var(--divider);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+table td{padding:0.55rem 0.75rem;border-bottom:1px solid var(--divider);font-size:0.875rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer;transition:background var(--trans)}
+tbody tr:hover{background:var(--surface-off)}
+.client-code{font-weight:700;font-size:0.8rem;color:var(--primary);background:var(--primary-hl);padding:0.15rem 0.45rem;border-radius:var(--r-sm)}
+
+/* Grid */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+/* KPI row */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:0}
+
+.kpi{background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-lg);padding:1rem 1.25rem}
+.kpi-val{font-size:1.75rem;font-weight:700;line-height:1;margin-bottom:0.25rem}
+.kpi-label{font-size:0.78rem;color:var(--muted);font-weight:500}
+
+/* Btn */
+.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;border-radius:var(--r-md);font-size:0.875rem;font-weight:600;transition:background var(--trans),color var(--trans),box-shadow var(--trans)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-h);box-shadow:var(--shadow-sm)}
+.btn-ghost{color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface-off);color:var(--text)}
+
+/* Search/filter bar */
+.toolbar{display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.search-input{padding:0.4rem 0.75rem;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-size:0.875rem;min-width:180px}
+.search-input:focus{outline:2px solid var(--primary);outline-offset:2px}
+select.filter-sel{padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-size:0.875rem}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:oklch(0.15 0.01 80/0.5);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem;transition:opacity var(--trans)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-xl);width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-md);transform:translateY(12px);transition:transform var(--trans)}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--divider);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.modal-title{font-size:1.05rem;font-weight:700}
+.modal-body{padding:1.25rem 1.5rem}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--divider);display:flex;gap:0.5rem;justify-content:flex-end}
+.close-btn{width:30px;height:30px;border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0}
+.close-btn:hover{background:var(--surface-off);color:var(--text)}
+
+/* Checklist steps in modal */
+.step-list{display:flex;flex-direction:column;gap:0.4rem;margin:1rem 0}
+.step-item{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;border-radius:var(--r-md);border:1px solid var(--divider);cursor:pointer;transition:background var(--trans)}
+.step-item:hover{background:var(--surface-off)}
+.step-item.done-step{background:var(--success-hl);border-color:transparent}
+.step-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background var(--trans),border-color var(--trans)}
+.step-item.done-step .step-check{background:var(--success);border-color:var(--success)}
+.step-name{font-size:0.875rem;font-weight:500;flex:1}
+.step-item.done-step .step-name{color:var(--success)}
+
+/* Requirement cards */
+.req-card{background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-lg);padding:1rem;cursor:pointer;transition:background var(--trans),box-shadow var(--trans)}
+.req-card:hover{background:var(--surface-off);box-shadow:var(--shadow-sm)}
+.req-label{font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:0.35rem}
+.req-client{font-size:0.95rem;font-weight:700;margin-bottom:0.25rem}
+.req-date{font-size:0.8rem;color:var(--muted)}
+
+/* Form */
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:.04em}
+.form-input{width:100%;padding:0.5rem 0.75rem;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface-2);color:var(--text);font-size:0.875rem;transition:border-color var(--trans)}
+.form-input:focus{outline:none;border-color:var(--primary)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+
+/* View switch */
+.view{display:none}.view.active{display:block}
+
+
+/* Tooltip */
+.dot-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.dot-wrap .tip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--text);color:var(--bg);
+  font-size:0.72rem;font-weight:600;white-space:nowrap;
+  padding:0.25rem 0.5rem;border-radius:var(--r-sm);
+  pointer-events:none;opacity:0;transition:opacity 120ms ease;
+  z-index:300;
+}
+.dot-wrap .tip::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:4px solid transparent;border-top-color:var(--text);
+}
+.dot-wrap:hover .tip{opacity:1}
+
+/* Overdue highlight */
+tr.overdue-row td:first-child{border-left:3px solid var(--error)}
+.note-deadline{font-size:0.75rem;margin-top:0.2rem}
+.note-deadline.od{color:var(--error);font-weight:600}
+.note-deadline.soon{color:var(--warning)}
+.note-deadline.ok{color:var(--success)}
+
+/* Empty state */
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.empty-icon{font-size:2rem;margin-bottom:0.5rem;opacity:0.4}
+
+/* ── Dot completion burst ─────────────────────────────────────────── */
+@keyframes dot-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.7); box-shadow: 0 0 0 4px oklch(from var(--success) l c h / 0.35); }
+  65%  { transform: scale(0.85); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+@keyframes particle-fly {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+@keyframes row-flash {
+  0%   { background: transparent; }
+  30%  { background: oklch(from var(--success) l c h / 0.12); }
+  100% { background: transparent; }
+}
+@keyframes complete-sweep {
+  0%   { background: transparent; }
+  20%  { background: oklch(from var(--success) l c h / 0.18); }
+  80%  { background: oklch(from var(--success) l c h / 0.10); }
+  100% { background: transparent; }
+}
+.dot.pop-anim { animation: dot-pop 420ms cubic-bezier(0.16,1,0.3,1) forwards; }
+.row-flash-anim { animation: row-flash 600ms ease forwards; }
+.particle {
+  position: fixed; pointer-events: none; z-index: 9999;
+  width: 7px; height: 7px; border-radius: 50%;
+  animation: particle-fly 550ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+
+/* ── Coach page ─────────────────────────────────────────────────────── */
+.coach-wrap { max-width: 600px; margin: 0 auto; }
+
+/* Entry screen */
+.coach-entry { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+.coach-entry-icon { font-size: 2.2rem; margin-bottom: 0.75rem; }
+.coach-entry-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.4rem; }
+.coach-entry-sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.75rem; max-width: 38ch; margin-left: auto; margin-right: auto; }
+.entry-btn-grid { display: flex; flex-direction: column; gap: 0.5rem; max-width: 340px; margin: 0 auto; }
+.entry-btn {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.85rem 1.1rem; border-radius: var(--r-lg);
+  background: var(--surface); border: 1.5px solid var(--divider);
+  font-size: 0.925rem; font-weight: 600; color: var(--text);
+  cursor: pointer; transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
+  text-align: left;
+}
+.entry-btn:hover { background: var(--surface-off); border-color: var(--primary); box-shadow: var(--shadow-sm); }
+.entry-btn-icon { font-size: 1.2rem; flex-shrink: 0; width: 28px; text-align: center; }
+.entry-btn-sub { font-size: 0.75rem; color: var(--muted); font-weight: 400; display: block; margin-top: 0.1rem; }
+
+/* Coach step screens */
+.coach-screen { animation: coach-fade 220ms ease forwards; }
+@keyframes coach-fade { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+
+.coach-bottleneck {
+  font-size: 0.8rem; font-weight: 700; color: var(--warning);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 0.4rem;
+}
+.coach-headline {
+  font-size: 1.15rem; font-weight: 700; color: var(--text);
+  line-height: 1.35; margin-bottom: 0.6rem;
+}
+.coach-body {
+  font-size: 0.9rem; color: var(--muted); line-height: 1.55;
+  margin-bottom: 1.25rem; max-width: 44ch;
+}
+
+/* Action card — the ONE thing */
+.one-task-card {
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: var(--r-xl);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 0 0 4px oklch(from var(--primary) l c h / 0.07);
+}
+.one-task-label {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--primary); margin-bottom: 0.4rem;
+}
+.one-task-action {
+  font-size: 1.1rem; font-weight: 700; color: var(--text);
+  line-height: 1.3; margin-bottom: 0.3rem;
+}
+.one-task-client {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; color: var(--muted); margin-bottom: 0.9rem;
+}
+.one-task-client .queue-client { font-size: 0.75rem; }
+
+/* Coach buttons */
+.coach-btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.c-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.5rem 1rem; border-radius: var(--r-md);
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background var(--trans), box-shadow var(--trans);
+}
+.c-btn-primary { background: var(--primary); color: #fff; }
+.c-btn-primary:hover { background: var(--primary-h); box-shadow: var(--shadow-sm); }
+.c-btn-ghost { background: var(--surface); border-color: var(--border); color: var(--muted); }
+.c-btn-ghost:hover { background: var(--surface-off); color: var(--text); }
+.c-btn-warn { background: var(--warning-hl); border-color: var(--warning); color: var(--warning); }
+.c-btn-warn:hover { background: var(--surface-off); }
+.c-btn-success { background: var(--success); color: #fff; }
+.c-btn-success:hover { background: #356b18; }
+
+/* Re-entry / shame interrupt */
+.reentry-card {
+  background: var(--surface-off); border-radius: var(--r-xl);
+  padding: 1.25rem 1.5rem; margin-bottom: 1rem;
+  border-left: 3px solid var(--primary);
+}
+.reentry-phrase {
+  font-size: 0.9rem; font-style: italic; color: var(--muted);
+  margin-bottom: 0.75rem; line-height: 1.5;
+}
+
+/* Timer strip */
+.timer-strip {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--gold-hl); border: 1px solid var(--gold);
+  border-radius: var(--r-lg); padding: 0.6rem 0.9rem;
+  font-size: 0.875rem; font-weight: 600; color: var(--text);
+  margin-bottom: 1rem;
+}
+.timer-count { font-size: 1.1rem; font-weight: 700; color: var(--warning); min-width: 3ch; }
+
+/* All done */
+.coach-all-done {
+  text-align: center; padding: 3rem 1rem;
+  background: var(--success-hl); border: 1.5px solid var(--success);
+  border-radius: var(--r-xl);
+}
+.coach-all-done-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.coach-all-done h2 { font-size: 1.3rem; font-weight: 700; color: var(--success); margin-bottom: 0.35rem; }
+.coach-all-done p { font-size: 0.9rem; color: var(--muted); }
+
+/* Misc */
+.queue-client { font-weight: 700; color: var(--primary); font-size: 0.8rem;
+  background: var(--primary-hl); padding: 0.15rem 0.4rem; border-radius: var(--r-sm); }
+.coach-steps-preview { display: flex; gap: 3px; margin-top: 0.5rem; flex-wrap: wrap; }
+.coach-divider { border: none; border-top: 1px solid var(--divider); margin: 1.25rem 0; }
+.coach-back { font-size: 0.8rem; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; margin-bottom: 1rem; }
+.coach-back:hover { color: var(--text); }
+
+
+/* Delete button */
+.del-btn {
+  width: 24px; height: 24px; border-radius: var(--r-full);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--faint); cursor: pointer; flex-shrink: 0;
+  transition: color var(--trans), background var(--trans);
+  border: none; background: none; font-size: 0.85rem; line-height: 1;
+}
+.del-btn:hover { color: var(--error); background: var(--error-hl); }
+
+
+/* Reports tab */
+.req-client-block { margin-bottom: 1.75rem; width: 100%; box-sizing: border-box; overflow: hidden; }
+.req-client-name { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 0.6rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--primary); display: inline-block; min-width: 80px; }
+.req-doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; width: 100%; box-sizing: border-box; }
+@media(max-width:700px) { }
+.req-doc-card { background: var(--surface); border: 1px solid var(--divider); border-radius: var(--r-lg); padding: 1rem; }
+.req-doc-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--text); }
+.req-field-row { margin-bottom: 0.6rem; }
+.req-field-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; display: block; margin-bottom: 0.2rem; }
+.req-auto-badge { font-size: 0.65rem; background: var(--primary); color: #fff; border-radius: 3px; padding: 0 4px; margin-left: 4px; vertical-align: middle; font-weight: 600; }
+.req-date-input { width: 100%; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: 0.82rem; }
+.req-date-input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+
+.row-open-btn { cursor: pointer; }
+.row-open-btn:hover { text-decoration: underline; color: var(--primary); }
+
+
+@keyframes celebPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+
+.undo-btn {
+  margin-left: auto;
+  opacity: 0.45;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  background: transparent;
+  cursor: default;
+  transition: opacity 0.2s;
+}
+.undo-btn:not([disabled]) {
+  opacity: 1;
+  cursor: pointer;
+  color: var(--primary);
+}
+.undo-btn:not([disabled]):hover {
+  background: oklch(from var(--primary) l c h / 0.08);
+}
+
+
+.coach-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+
+.coach-celebrate-emoji {
+  font-size: 4.5rem;
+  animation: celebPop 0.55s cubic-bezier(.36,.07,.19,.97) both;
+}
+.coach-celebrate-confetti {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  overflow: visible;
+  pointer-events: none;
+}
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120px) rotate(360deg); opacity: 0; }
+}
+@keyframes celebPop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+
+/* Link edit modal */
+#link-edit-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 299; display: none;
+}
+#link-edit-overlay.open { display: block; }
+#link-edit-modal {
+  display: none; position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); z-index: 300;
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: 14px; padding: 1.5rem;
+  width: min(420px, 92vw); flex-direction: column;
+  gap: 0.75rem; box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+}
+#link-edit-modal.open { display: flex; }
+
+/* ── Calendar ─────────────────────────────────────────────────────────────── */
+#cal-grid { width: 100%; border-collapse: collapse; }
+.cal-dow-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.cal-dow-cell {
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 0.1rem 0;
+}
+.cal-weeks {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-day {
+  min-height: 34px;
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  padding: 0.15rem 0.1rem;
+  background: var(--surface);
+  position: relative;
+  vertical-align: top;
+  cursor: default;
+  box-sizing: border-box;
+}
+.cal-day.cal-today {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+.cal-day.cal-other-month {
+  background: var(--surface-off2);
+  opacity: 0.5;
+}
+.cal-day.cal-has-sessions { cursor: pointer; }
+.cal-day.cal-empty-clickable { cursor: pointer; }
+.cal-day.cal-empty-clickable:hover { background: var(--surface-off); }
+.cal-day-num {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.1rem;
+  line-height: 1;
+}
+.cal-day.cal-today .cal-day-num { color: var(--primary); font-weight: 800; }
+.cal-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 2px;
+}
+.cal-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s;
+  position: relative;
+}
+.cal-dot:hover { transform: scale(1.4); }
+.cal-dot-label {
+  display: none;
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--surface);
+  font-size: 0.65rem;
+  white-space: nowrap;
+  border-radius: 4px;
+  padding: 2px 5px;
+  pointer-events: none;
+  z-index: 50;
+}
+.cal-dot:hover .cal-dot-label { display: block; }
+@media (max-width: 700px) {
+  #cal-panel { display: none; }
+  .kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
+}
+
+#confirm-modal { color-scheme: light; }
+[data-theme="dark"] #confirm-modal { background: #2a2927 !important; border-color: #6C63FF !important; color: #f0ede8; }
+[data-theme="dark"] #confirm-title { color: #f0ede8; }
+[data-theme="dark"] #confirm-body { color: #a09d99; }
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div class="app">
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-label="Clinical Doc Tracker">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M9 3v18M15 9h-3M15 13h-3M9 9h.01M9 13h.01M9 17h.01"/>
+    </svg>
+    Clinical Docs
+  </div>
+  <nav class="nav-tabs">
+    <div class="nav-main-tabs">
+      <button class="nav-tab active" onclick="switchView('dashboard')">Dashboard</button>
+      <button class="nav-tab" onclick="switchView('sessions')">All Sessions</button>
+      <button class="nav-tab" onclick="switchView('requirements')">Reports</button>
+      <button class="nav-tab" onclick="switchView('coach')">✦ Coach</button>
+    </div>
+    <div class="nav-util-tabs">
+      <button class="nav-tab undo-btn" id="undo-btn" onclick="doUndo()" disabled title="Nothing to undo">↩ Undo</button>
+      <button class="nav-util-btn" id="autobackup-btn" onclick="onAutoBackupBtn()" title="Auto-save backups to a file on your computer">💾 Auto-Backup: Off</button>
+      <button class="nav-util-btn" id="drive-connect-btn" onclick="onDriveConnectBtn()" title="Auto-save backups directly to Google Drive">🔗 Drive: Off</button>
+      <button class="nav-util-btn" onclick="exportData()" title="Save a backup of your progress">⬇ Export</button>
+      <button class="nav-util-btn" onclick="document.getElementById('import-file').click()" title="Restore from a backup file">⬆ Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+    </div>
+  </nav>
+  <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+  </button>
+</header>
+
+<!-- VIEWS -->
+<main class="content">
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <!-- DASHBOARD TOP: KPIs left 2/3, mini calendar right 1/3 -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1rem;align-items:start">
+      <div class="kpi-grid" id="kpi-grid" style="margin-bottom:0"></div>
+      <div class="card" id="cal-panel" style="padding:0.75rem;min-height:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+          <button class="c-btn c-btn-ghost" style="padding:0.15rem 0.4rem;font-size:0.8rem;min-width:0" onclick="calNav(-1)">‹</button>
+          <div id="cal-month-label" style="font-weight:700;font-size:0.75rem;text-align:center"></div>
+          <button class="c-btn c-btn-ghost" style="padding:0.15rem 0.4rem;font-size:0.8rem;min-width:0" onclick="calNav(1)">›</button>
+        </div>
+        <div id="cal-grid"></div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;font-size:0.65rem;color:var(--muted)">
+          <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:2px;vertical-align:middle"></span>Active</span>
+          <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:2px;vertical-align:middle"></span>Done</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="section-header" style="flex-wrap:wrap;gap:0.5rem">
+          <div><div class="section-title">📋 Sessions In Progress</div><div class="section-sub">Click any dot to complete a step · Row disappears when all 7 are green</div></div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+            <select class="form-input" id="dash-filter-client" onchange="renderDashboard()" style="width:auto;padding:0.35rem 0.6rem;font-size:0.82rem">
+              <option value="">All Clients</option>
+            </select>
+            <select class="form-input" id="dash-filter-step" onchange="renderDashboard()" style="width:auto;padding:0.35rem 0.6rem;font-size:0.82rem">
+              <option value="">All Next Steps</option>
+              <option value="Upload Placeholder Note">Upload Placeholder Note</option>
+              <option value="Update Disposition List">Update Disposition List</option>
+              <option value="Share Zoom Link">Share Zoom Link</option>
+              <option value="Update Hours in Time2Track">Update Time2Track</option>
+              <option value="Update Supervisor Log">Update Supervisor Log</option>
+              <option value="Upload Note to EPIC">Upload Note to EPIC</option>
+              <option value="Write Note &amp; Tag Sup./TA">Write Note / Tag Supervisor</option>
+              <option value="Upload Note to EPIC">Upload Note to EPIC</option>
+            </select>
+            <button class="btn btn-primary" id="add-btn" onclick="openAddModal()">+ Add Session</button>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Client</th><th>Visit</th><th>Date</th><th>Status</th><th>Steps</th></tr></thead>
+          <tbody id="attention-tbody"></tbody>
+        </table></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ALL SESSIONS -->
+  <div class="view" id="view-sessions">
+    <div class="card">
+      <div class="section-header">
+        <div><div class="section-title">All Sessions</div><div class="section-sub" id="sessions-count"></div></div>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Session</button>
+      </div>
+      <div class="toolbar">
+        <select class="filter-sel" onchange="renderAllSessions()" id="all-filter-client">
+          <option value="">All Clients</option>
+        </select>
+        <select class="filter-sel" onchange="renderAllSessions()" id="all-filter-step">
+          <option value="">All Next Steps</option>
+          <option value="Upload Placeholder Note">Upload Placeholder Note</option>
+          <option value="Update Disposition List">Update Disposition List</option>
+          <option value="Share Zoom Link">Share Zoom Link</option>
+          <option value="Update Hours in Time2Track">Update Time2Track</option>
+          <option value="Update Supervisor Log">Update Supervisor Log</option>
+          <option value="Upload Note to EPIC">Upload Note to EPIC</option>
+          <option value="Write Note &amp; Tag Sup./TA">Write Note / Tag Supervisor</option>
+          <option value="Upload Note to EPIC">Upload Note to EPIC</option>
+          <option value="COMPLETE">Complete</option>
+        </select>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Client</th><th>Visit</th><th>Appt Date</th><th>Status</th><th title="Place Holder Note">PH</th><th title="Disposition List">Disp</th><th title="Zoom">Zoom</th><th title="Time 2 Track">T2T</th><th title="Supervisor Log">S.Log</th><th title="Note in Review">Review</th><th title="Note to Epic">Epic</th><th></th></tr></thead>
+        <tbody id="all-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- REQUIREMENTS -->
+  <div class="view" id="view-requirements">
+    <div class="card">
+      <div class="section-header"><div><div class="section-title">Client Reports</div><div class="section-sub">365 Reviews, Service Plans & Integrated Reports — click to cycle status</div></div></div>
+      <div id="req-grid" style="margin-top:0.5rem"></div>
+    </div>
+  </div>
+
+
+  <!-- COACH -->
+  <div class="view" id="view-coach">
+    <div id="coach-shell"></div>
+  </div>
+
+</main>
+</div>
+
+<!-- SESSION DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal" onclick="handleOverlayClick(event)">
+  <div class="modal" id="detail-modal-inner">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title"></div>
+        <div id="modal-meta" style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('detail-modal')" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-deadline-info" style="margin-bottom:0.75rem"></div>
+      <div class="step-list" id="modal-steps"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="color:var(--error);border-color:var(--error)" onclick="doDeleteCurrent()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeModal('detail-modal')">Close</button>
+      <button class="btn btn-primary" onclick="markAllDone()">Mark All Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SESSION MODAL -->
+<div class="modal-overlay" id="add-modal" onclick="handleOverlayClick(event)">
+  <div class="modal" id="add-modal-inner">
+    <div class="modal-header">
+      <div class="modal-title">Add New Session</div>
+      <button class="close-btn" onclick="closeModal('add-modal')" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="f-client">Client</label>
+          <select class="form-input" id="f-client" onchange="handleClientSelect(this)">
+            <option value="">— Select client —</option>
+            <option value="PCH1">PCH1</option>
+            <option value="PCH2">PCH2</option>
+            <option value="PCH3">PCH3</option>
+            <option value="PCH4">PCH4</option>
+            <option value="__new__">+ Add new client…</option>
+          </select>
+          <input class="form-input" id="f-client-new" placeholder="Enter new client code" autocomplete="off"
+            style="display:none;margin-top:0.4rem">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="f-visit">Visit #</label>
+          <input class="form-input" id="f-visit" placeholder="e.g. Visit 1" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="f-date">Session Date</label>
+        <input class="form-input" id="f-date" type="date">
+      </div>
+      
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddSession()">Add Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+  let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  r.setAttribute('data-theme',d);
+  t&&t.addEventListener('click',()=>{
+    d=d==='dark'?'light':'dark';
+    r.setAttribute('data-theme',d);
+    t.innerHTML=d==='dark'
+      ?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+      :'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  });
+})();
+
+// ── DATA ──────────────────────────────────────────────────────────────
+const STEP_NAMES = ['Place Holder Note','Disposition List','Zoom','Time 2 Track','Supervisor Log','Note in Review','Note to Epic'];
+
+let sessions = [
+  {id:1,  client:'PCH1',   appt:'2025-09-03', visit:'Visit 1',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:2,  client:'PCH3',   appt:'2025-09-05', visit:'Visit 1',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:3,  client:'PCH2',   appt:'2025-09-09', visit:'Visit 1',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:4,  client:'PCH3',   appt:'2025-09-10', visit:'Visit 2',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:5,  client:'PCH2',   appt:'2025-09-16', visit:'Visit 2',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:6,  client:'PCH1',   appt:'2025-09-17', visit:'Visit 2',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:7,  client:'PCH3',   appt:'2025-09-17', visit:'Visit 3',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:8,  client:'PCH2',   appt:'2025-09-23', visit:'Visit 3',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:9,  client:'PCH2',   appt:'2025-09-30', visit:'Visit 4',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:10, client:'PCH1',   appt:'2025-10-01', visit:'Visit 3',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:11, client:'PCH3',   appt:'2025-10-01', visit:'Visit 4',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:12, client:'PCH2',   appt:'2025-10-07', visit:'Visit 5',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:13, client:'PCH1',   appt:'2025-10-08', visit:'Visit 4',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:14, client:'PCH3',   appt:'2025-10-08', visit:'Visit 5',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:15, client:'PCH2',   appt:'2025-10-14', visit:'Visit 6',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:16, client:'PCH3',   appt:'2025-10-22', visit:'Visit 6',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:17, client:'PCH1',   appt:'2025-10-22', visit:'Visit 5',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:18, client:'PCH2',   appt:'2025-10-28', visit:'Visit 7',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:19, client:'PCH3',   appt:'2025-10-29', visit:'Visit 7',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:20, client:'PCH1',   appt:'2025-11-05', visit:'Visit 6',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:21, client:'PCH3',   appt:'2025-11-05', visit:'Visit 8',  status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:22, client:'PCH2',    appt:'2025-11-12', visit:'Visit 8',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:23, client:'PCH1',    appt:'2025-11-19', visit:'Visit 7',  status:'COMPLETE',    steps:[1,1,1,1,1,1,1]},
+  {id:24, client:'PCH2',    appt:'2025-12-02', visit:'Visit 9',  status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:25, client:'PCH1',    appt:'2025-12-03', visit:'Visit 8',  status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:26, client:'PCH3',    appt:'2025-12-17', visit:'Visit 9',  status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:27, client:'PCH1',    appt:'2025-12-17', visit:'Visit 9',  status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:28, client:'PCH1',    appt:'2026-01-13', visit:'Visit 10', status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:29, client:'PCH2',    appt:'2026-01-13', visit:'Visit 10', status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:30, client:'PCH3',    appt:'2026-01-15', visit:'Visit 10', status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:31, client:'PCH1',    appt:'2026-01-20', visit:'Visit 11', status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:32, client:'PCH3',    appt:'2026-01-22', visit:'Visit 11', status:'IN REVIEW',   steps:[1,1,1,1,1,1,0]},
+  {id:33, client:'PCH2',    appt:'2026-01-27', visit:'Visit 11', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+  {id:34, client:'PCH1',    appt:'2026-02-03', visit:'Visit 12', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+  {id:35, client:'PCH4', appt:'2026-02-05', visit:'Visit 1',  status:'NOT STARTED', steps:[1,1,0,1,0,0,0]},
+  {id:36, client:'PCH2',    appt:'2026-02-10', visit:'Visit 12', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+  {id:37, client:'PCH4', appt:'2026-02-12', visit:'Visit 2',  status:'NOT STARTED', steps:[1,1,1,1,0,0,0]},
+  {id:38, client:'PCH3',    appt:'2026-02-12', visit:'Visit 12', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+  {id:39, client:'PCH1',    appt:'2026-02-17', visit:'Visit 13', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+  {id:40, client:'PCH3',    appt:'2026-02-26', visit:'Visit 13', status:'NOT STARTED', steps:[1,1,1,1,0,0,0]},
+  {id:41, client:'PCH4', appt:'2026-02-26', visit:'Visit 3',  status:'NOT STARTED', steps:[1,1,1,1,0,0,0]},
+  {id:42, client:'PCH1',    appt:'2026-03-03', visit:'Visit 14', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+  {id:43, client:'PCH3',    appt:'2026-03-05', visit:'Visit 14', status:'DOC CREATED', steps:[1,1,1,1,0,0,0]},
+];
+
+// ── Step resource links (persisted) ───────────────────────────────────────────
+// stepLinks[i] = URL string for STEP_NAMES[i]
+const STEP_SUGGESTIONS = [
+  { label: 'Suggest: your placeholder note template document', url: '' },
+  { label: 'Suggest: your Disposition List document', url: '' },
+  { label: 'Suggest: your Zoom recordings document', url: '' },
+  { label: 'Auto-linked to Time2Track', url: 'https://app.time2track.com/activities' },
+  { label: 'Suggest: your Supervisor Log document', url: '' },
+  { label: 'Suggest: your Box folder (notes & drafts)', url: '' },
+  { label: 'Suggest: OCHIN / Epic link', url: '' },
+];
+
+let stepLinks = JSON.parse(localStorage.getItem('stepLinks') || 'null') ||
+  STEP_SUGGESTIONS.map(s => s.url);
+
+function saveStepLinks() {
+  localStorage.setItem('stepLinks', JSON.stringify(stepLinks));
+  queueAutoBackup();
+}
+
+// ── Undo stack ─────────────────────────────────────────────────────────────────
+let undoStack = [];
+
+function pushUndo(snapshot) {
+  undoStack.push(snapshot);
+  if (undoStack.length > 30) undoStack.shift();
+  updateUndoBtn();
+}
+
+function updateUndoBtn() {
+  const btn = document.getElementById('undo-btn');
+  if (!btn) return;
+  btn.disabled = undoStack.length === 0;
+  if (undoStack.length === 0) {
+    btn.title = 'Nothing to undo';
+    return;
+  }
+  const top = undoStack[undoStack.length - 1];
+  if (top.type === 'delete') {
+    const name = top.session ? (top.session.client + ' ' + top.session.visit) : 'session';
+    btn.title = 'Undo: restore deleted ' + name;
+  } else if (top.type === 'add') {
+    const s = sessions.find(x => x.id === top.id);
+    const name = s ? (s.client + ' ' + s.visit) : 'session';
+    btn.title = 'Undo: remove added ' + name;
+  } else {
+    btn.title = 'Undo last step change';
+  }
+}
+
+function doUndo() {
+  if (undoStack.length === 0) return;
+  const snap = undoStack.pop();
+
+  if (snap.type === 'delete') {
+    // Re-insert the deleted session at its original index
+    const restored = Object.assign({}, snap.session);
+    const insertAt = Math.min(snap.idx, sessions.length);
+    sessions.splice(insertAt, 0, restored);
+    saveSessions();
+  } else if (snap.type === 'add') {
+    // Remove the session that was just added
+    sessions = sessions.filter(s => s.id !== snap.id);
+    saveSessions();
+  } else {
+    // Legacy step toggle undo
+    const s = sessions.find(x => x.id === snap.id);
+    if (!s) { updateUndoBtn(); return; }
+    s.steps = [...snap.steps];
+    s.status = deriveStatus(s.steps);
+    saveSessions();
+  }
+
+  updateUndoBtn();
+  renderAll();
+}
+
+// ── Session persistence ────────────────────────────────────────────────────────
+function saveSessions() {
+  localStorage.setItem('sessions', JSON.stringify(sessions));
+  queueAutoBackup();
+}
+
+function loadPersistedSessions() {
+  const saved = localStorage.getItem('sessions');
+  if (!saved) return;
+  try {
+    const parsed = JSON.parse(saved);
+    parsed.forEach(p => {
+      const s = sessions.find(x => x.id === p.id);
+      if (s) { s.steps = p.steps; s.status = deriveStatus(s.steps); }
+    });
+  } catch(e) {}
+}
+
+// ── Auto-Backup (File System Access API) ───────────────────────────────────────
+// Lets the user pick a real file on disk once. From then on, every change is
+// silently written to that file. If the chosen file lives in a folder that's
+// synced to Google Drive / Dropbox / OneDrive, this becomes an automatic
+// off-machine backup with zero ongoing effort. Chrome/Edge only.
+
+let autoBackupHandle = null;
+let autoBackupTimer = null;
+const AUTOBACKUP_SUPPORTED = 'showSaveFilePicker' in window;
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('doc-tracker-fs', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function setAutoBackupBtn(state) {
+  const btn = document.getElementById('autobackup-btn');
+  if (!btn) return;
+  if (state === 'on') {
+    btn.textContent = '💾 Auto-Backup: On';
+    btn.title = 'Auto-saving to ' + (autoBackupHandle ? autoBackupHandle.name : 'file') + ' — click to change';
+    btn.style.color = 'var(--success)';
+  } else if (state === 'needs-permission') {
+    btn.textContent = '💾 Auto-Backup: Click to resume';
+    btn.title = 'Click to re-grant permission for this browser session';
+    btn.style.color = 'var(--warning)';
+  } else {
+    btn.textContent = '💾 Auto-Backup: Off';
+    btn.title = AUTOBACKUP_SUPPORTED ? 'Auto-save backups to a file on your computer' : 'Not supported in this browser — use Export/Import instead';
+    btn.style.color = '';
+  }
+}
+
+async function onAutoBackupBtn() {
+  if (!AUTOBACKUP_SUPPORTED) {
+    alert('Auto-Backup needs Chrome or Edge. In this browser, please use the ⬇ Export button regularly instead.');
+    return;
+  }
+  // If we have a handle but lost permission (e.g. fresh page load), try to resume it first.
+  if (autoBackupHandle) {
+    try {
+      const perm = await autoBackupHandle.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        setAutoBackupBtn('on');
+        await writeAutoBackupNow();
+        return;
+      }
+    } catch (e) { /* fall through to picker */ }
+  }
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'doc-tracker-autobackup.json',
+      types: [{ description: 'JSON backup', accept: { 'application/json': ['.json'] } }]
+    });
+    autoBackupHandle = handle;
+    await idbSet('backupHandle', handle);
+    setAutoBackupBtn('on');
+    await writeAutoBackupNow();
+  } catch (e) {
+    // user cancelled the picker — no-op
+  }
+}
+
+async function tryResumeAutoBackup() {
+  if (!AUTOBACKUP_SUPPORTED) { setAutoBackupBtn('off'); return; }
+  try {
+    const handle = await idbGet('backupHandle');
+    if (!handle) { setAutoBackupBtn('off'); return; }
+    autoBackupHandle = handle;
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      setAutoBackupBtn('on');
+    } else {
+      setAutoBackupBtn('needs-permission');
+    }
+  } catch (e) {
+    setAutoBackupBtn('off');
+  }
+}
+
+function queueAutoBackup() {
+  if (autoBackupHandle) {
+    clearTimeout(autoBackupTimer);
+    autoBackupTimer = setTimeout(writeAutoBackupNow, 800); // debounce rapid edits
+  }
+  queueDriveBackup();
+}
+
+async function writeAutoBackupNow() {
+  if (!autoBackupHandle) return;
+  try {
+    const perm = await autoBackupHandle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { setAutoBackupBtn('needs-permission'); return; }
+    const data = {
+      exportedAt: new Date().toISOString(),
+      sessions: sessions,
+      stepLinks: stepLinks,
+      requirements: requirements,
+    };
+    const writable = await autoBackupHandle.createWritable();
+    await writable.write(JSON.stringify(data, null, 2));
+    await writable.close();
+  } catch (e) {
+    console.warn('Auto-backup write failed:', e);
+  }
+}
+
+// ── Google Drive Auto-Backup (OAuth, no backend needed) ─────────────────────
+// Writes the same backup JSON directly to the user's Google Drive over the
+// Drive API, using a browser-only OAuth flow (Google Identity Services).
+// Uses the 'drive.file' scope, so the app can only see/edit files it creates
+// itself — not the rest of the user's Drive.
+
+let driveClientId = localStorage.getItem('driveClientId') || '';
+let driveTokenClient = null;
+let driveAccessToken = null;
+let driveTokenExpiry = 0;
+let driveFileId = localStorage.getItem('driveBackupFileId') || null;
+let driveConnected = false;
+let driveBackupTimer = null;
+let drivePendingResolve = null;
+let drivePendingReject = null;
+
+function setDriveBtn(state) {
+  const btn = document.getElementById('drive-connect-btn');
+  if (!btn) return;
+  if (state === 'on') {
+    btn.textContent = '🔗 Drive: On';
+    btn.title = 'Auto-saving to Google Drive — click to reconnect or change account';
+    btn.style.color = 'var(--success)';
+  } else if (state === 'connecting') {
+    btn.textContent = '🔗 Drive: Connecting…';
+    btn.style.color = 'var(--muted)';
+  } else if (state === 'needs-permission') {
+    btn.textContent = '🔗 Drive: Click to reconnect';
+    btn.title = 'Your Drive session expired — click to reconnect';
+    btn.style.color = 'var(--warning)';
+  } else if (state === 'error') {
+    btn.textContent = '🔗 Drive: Error — retry';
+    btn.title = 'Something went wrong — click to try again';
+    btn.style.color = 'var(--error)';
+  } else {
+    btn.textContent = '🔗 Drive: Off';
+    btn.title = 'Auto-save backups directly to Google Drive';
+    btn.style.color = '';
+  }
+}
+
+function initDriveTokenClient() {
+  if (driveTokenClient || !driveClientId || typeof google === 'undefined' || !google.accounts) return;
+  driveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: driveClientId,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: (resp) => {
+      if (resp.error) {
+        driveConnected = false;
+        if (drivePendingReject) drivePendingReject(resp);
+        return;
+      }
+      driveAccessToken = resp.access_token;
+      driveTokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
+      driveConnected = true;
+      if (drivePendingResolve) drivePendingResolve(driveAccessToken);
+    },
+  });
+}
+
+function requestDriveToken(interactive) {
+  return new Promise((resolve, reject) => {
+    if (!driveClientId) { reject(new Error('no-client-id')); return; }
+    if (typeof google === 'undefined' || !google.accounts) { reject(new Error('gis-not-loaded')); return; }
+    initDriveTokenClient();
+    drivePendingResolve = resolve;
+    drivePendingReject = reject;
+    try {
+      driveTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+    } catch (e) { reject(e); }
+  });
+}
+
+async function ensureDriveToken(interactive) {
+  if (driveAccessToken && Date.now() < driveTokenExpiry) return driveAccessToken;
+  return requestDriveToken(interactive);
+}
+
+async function driveFindOrVerifyFile(token) {
+  if (driveFileId) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?fields=id,trashed`, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (res.ok) {
+        const f = await res.json();
+        if (!f.trashed) return driveFileId;
+      }
+    } catch (e) { /* fall through to recreate */ }
+    driveFileId = null;
+    localStorage.removeItem('driveBackupFileId');
+  }
+  return null;
+}
+
+async function driveCreateFile(token, contentStr) {
+  const boundary = 'doctracker' + Date.now();
+  const metadata = { name: 'doc-tracker-autobackup.json', mimeType: 'application/json' };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${contentStr}\r\n` +
+    `--${boundary}--`;
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body
+  });
+  if (!res.ok) throw new Error('Drive create failed: ' + res.status);
+  const data = await res.json();
+  driveFileId = data.id;
+  localStorage.setItem('driveBackupFileId', driveFileId);
+  return driveFileId;
+}
+
+async function driveUpdateFile(token, fileId, contentStr) {
+  const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: contentStr
+  });
+  if (!res.ok) throw new Error('Drive update failed: ' + res.status);
+}
+
+function queueDriveBackup() {
+  if (!driveClientId || !driveConnected) return;
+  clearTimeout(driveBackupTimer);
+  driveBackupTimer = setTimeout(writeDriveBackupNow, 1000); // debounce rapid edits
+}
+
+async function writeDriveBackupNow() {
+  try {
+    const token = await ensureDriveToken(false);
+    const data = {
+      exportedAt: new Date().toISOString(),
+      sessions: sessions,
+      stepLinks: stepLinks,
+      requirements: requirements,
+    };
+    const contentStr = JSON.stringify(data, null, 2);
+    let fileId = await driveFindOrVerifyFile(token);
+    if (!fileId) fileId = await driveCreateFile(token, contentStr);
+    else await driveUpdateFile(token, fileId, contentStr);
+    setDriveBtn('on');
+  } catch (e) {
+    console.warn('Drive backup failed:', e);
+    setDriveBtn('needs-permission');
+  }
+}
+
+async function onDriveConnectBtn() {
+  if (!driveClientId) { openDriveSettings(); return; }
+  setDriveBtn('connecting');
+  try {
+    await ensureDriveToken(true);
+    await writeDriveBackupNow();
+  } catch (e) {
+    if (e && e.message === 'gis-not-loaded') {
+      alert('Google sign-in is still loading — give it a second and click again.');
+      setDriveBtn('off');
+    } else {
+      setDriveBtn('error');
+    }
+  }
+}
+
+function openDriveSettings() {
+  document.getElementById('drive-settings-input').value = driveClientId;
+  document.getElementById('drive-settings-overlay').style.display = 'block';
+  document.getElementById('drive-settings-modal').style.display = 'block';
+}
+
+function closeDriveSettings() {
+  document.getElementById('drive-settings-overlay').style.display = 'none';
+  document.getElementById('drive-settings-modal').style.display = 'none';
+}
+
+function saveDriveSettings() {
+  const val = document.getElementById('drive-settings-input').value.trim();
+  if (!val) { alert('Please paste your OAuth Client ID.'); return; }
+  driveClientId = val;
+  localStorage.setItem('driveClientId', val);
+  driveTokenClient = null; // force recreation with the new client id
+  closeDriveSettings();
+  onDriveConnectBtn();
+}
+
+function tryResumeDrive() {
+  if (!driveClientId) { setDriveBtn('off'); return; }
+  setDriveBtn('needs-permission');
+  const attempt = (retriesLeft) => {
+    if (typeof google === 'undefined' || !google.accounts) {
+      if (retriesLeft <= 0) { setDriveBtn('needs-permission'); return; }
+      setTimeout(() => attempt(retriesLeft - 1), 300);
+      return;
+    }
+    ensureDriveToken(false)
+      .then(() => { driveConnected = true; setDriveBtn('on'); })
+      .catch(() => setDriveBtn('needs-permission'));
+  };
+  attempt(15);
+}
+
+
+let nextId = 44;
+
+// requirements: one record per client × doc type
+// For 365 Review, nextDue auto-calculates as lastDone + 1 year
+let requirements = [
+  {id:'r1',  client:'PCH1', type:'365 Review',       lastDone:'', nextDue:''},
+  {id:'r2',  client:'PCH1', type:'Integrated Report', lastDone:'', nextDue:''},
+  {id:'r3',  client:'PCH1', type:'Service Plan',      lastDone:'', nextDue:''},
+  {id:'r4',  client:'PCH2', type:'365 Review',       lastDone:'', nextDue:''},
+  {id:'r5',  client:'PCH2', type:'Integrated Report', lastDone:'', nextDue:''},
+  {id:'r6',  client:'PCH2', type:'Service Plan',      lastDone:'', nextDue:''},
+  {id:'r7',  client:'PCH3', type:'365 Review',       lastDone:'', nextDue:''},
+  {id:'r8',  client:'PCH3', type:'Integrated Report', lastDone:'', nextDue:''},
+  {id:'r9',  client:'PCH3', type:'Service Plan',      lastDone:'', nextDue:''},
+  {id:'r10', client:'PCH4', type:'365 Review',       lastDone:'', nextDue:''},
+  {id:'r11', client:'PCH4', type:'Integrated Report', lastDone:'', nextDue:''},
+  {id:'r12', client:'PCH4', type:'Service Plan',      lastDone:'', nextDue:''},
+];
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function noteDue(appt) {
+  const d = new Date(appt);
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().split('T')[0];
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`;
+}
+
+function daysDiff(iso) {
+  return Math.round((new Date(iso) - new Date()) / 86400000);
+}
+
+function getStepIdxForStatus(status) {
+  return NEXT_ACTION.indexOf(status);
+}
+
+
+
+
+
+function statusBadge(s, sessionId) {
+  if (s === 'COMPLETE') return `<span class="badge badge-complete">${s}</span>`;
+  if (s === 'OVERDUE')  return `<span class="badge badge-overdue">${s}</span>`;
+  const idx = NEXT_ACTION.indexOf(s);
+  const hasLink = idx >= 0 && stepLinks[idx];
+  const linkIcon = hasLink ? '↗' : '＋';
+  const linkTitle = hasLink ? 'Click to open · Right-click to edit link' : 'Click to add a link for this step';
+  return `<span class="badge badge-primary status-badge-link"
+    style="max-width:200px;white-space:normal;line-height:1.3;text-align:left;cursor:pointer;display:inline-flex;align-items:center;gap:0.35rem;position:relative"
+    data-step-idx="${idx}"
+    onclick="badgeClick(event,${idx})"
+    oncontextmenu="badgeEdit(event,${idx});return false;"
+    title="${linkTitle}">
+    ${s}<span style="font-size:0.7rem;opacity:0.7">${linkIcon}</span>
+  </span>`;
+}
+
+function badgeClick(e, idx) {
+  if (idx < 0) return;
+  const url = stepLinks[idx];
+  if (url) {
+    window.open(url, '_blank');
+  } else {
+    badgeEdit(e, idx);
+  }
+}
+
+function badgeEdit(e, idx) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const existing = document.getElementById('link-popover');
+  if (existing) existing.remove();
+
+  const suggestion = STEP_SUGGESTIONS[idx] ? STEP_SUGGESTIONS[idx].label : '';
+  const currentUrl = stepLinks[idx] || '';
+  const isAuto = idx === 3;
+
+  const pop = document.createElement('div');
+  pop.id = 'link-popover';
+  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--divider);border-radius:12px;padding:1rem;width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.22);display:flex;flex-direction:column;gap:0.6rem;';
+
+  const x = Math.min(e ? e.clientX : 200, window.innerWidth - 320);
+  const y = Math.min(e ? e.clientY + 12 : 200, window.innerHeight - 200);
+  pop.style.left = x + 'px';
+  pop.style.top = y + 'px';
+
+  // Build buttons separately to avoid quote escaping issues
+  const btnStyle = 'padding:0.45rem 0.8rem;border-radius:7px;cursor:pointer;font-size:0.875rem;';
+  let btns = '';
+  if (!isAuto) btns += '<button id="link-pop-save" style="' + btnStyle + 'flex:1;background:var(--primary);color:#fff;border:none;font-weight:600">Save</button>';
+  if (currentUrl) btns += '<button id="link-pop-open" style="' + btnStyle + 'background:var(--surface-off2);border:1px solid var(--divider)">Open ↗</button>';
+  if (currentUrl && !isAuto) btns += '<button id="link-pop-remove" style="' + btnStyle + 'background:none;border:1px solid var(--divider);color:var(--muted)">Remove</button>';
+  btns += '<button id="link-pop-cancel" style="' + btnStyle + 'background:none;border:1px solid var(--divider)">Cancel</button>';
+
+  pop.innerHTML =
+    '<div style="font-weight:700;font-size:0.9rem">' + STEP_NAMES[idx] + '</div>' +
+    (suggestion ? '<div style="font-size:0.75rem;color:var(--muted);font-style:italic">' + suggestion + '</div>' : '') +
+    '<input id="link-pop-input" type="url" value="' + currentUrl.replace(/"/g,'&quot;') + '" placeholder="https://…"' +
+    ' style="width:100%;padding:0.5rem 0.7rem;border:1px solid var(--divider);border-radius:7px;background:var(--surface-off2);color:var(--text);font-size:0.875rem;box-sizing:border-box"' +
+    (isAuto ? ' disabled' : '') + '>' +
+    '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">' + btns + '</div>';
+
+  document.body.appendChild(pop);
+
+  // Wire up buttons via JS (no inline onclick = no quote issues)
+  const inp = document.getElementById('link-pop-input');
+  const saveBtn = document.getElementById('link-pop-save');
+  const openBtn = document.getElementById('link-pop-open');
+  const removeBtn = document.getElementById('link-pop-remove');
+  const cancelBtn = document.getElementById('link-pop-cancel');
+
+  if (saveBtn) saveBtn.onclick = () => saveLinkPop(idx);
+  if (openBtn) openBtn.onclick = () => window.open(stepLinks[idx] || currentUrl, '_blank');
+  if (removeBtn) removeBtn.onclick = () => removeLinkPop(idx);
+  if (cancelBtn) cancelBtn.onclick = () => pop.remove();
+  if (inp && !isAuto) { inp.focus(); inp.select(); }
+  if (inp) inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') saveLinkPop(idx); });
+
+  setTimeout(() => {
+    document.addEventListener('click', function handler(ev) {
+      const p = document.getElementById('link-popover');
+      if (p && !p.contains(ev.target)) { p.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 100);
+}
+
+function saveLinkPop(idx) {
+  let val = (document.getElementById('link-pop-input') || {}).value || '';
+  val = val.trim();
+  if (val && !val.startsWith('http://') && !val.startsWith('https://')) val = 'https://' + val;
+  stepLinks[idx] = val;
+  saveStepLinks();
+  const p = document.getElementById('link-popover');
+  if (p) p.remove();
+  renderAll();
+}
+
+function removeLinkPop(idx) {
+  stepLinks[idx] = '';
+  saveStepLinks();
+  const p = document.getElementById('link-popover');
+  if (p) p.remove();
+  renderAll();
+}
+
+function handleStatusClick(e, idx, sessionId) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  if (idx < 0) return;
+  const url = stepLinks[idx];
+  if (url) {
+    window.open(url, '_blank');
+  } else {
+    openLinkEditModal(idx);
+  }
+}
+
+function openLinkEditModal(idx) {
+  if (idx < 0) return;
+  const existing = stepLinks[idx] || '';
+  const suggestion = STEP_SUGGESTIONS[idx];
+  const stepName = STEP_NAMES[idx];
+  const isAutoLinked = idx === 3; // Time2Track is auto-linked
+
+  const modal = document.getElementById('link-edit-modal');
+  const overlay = document.getElementById('link-edit-overlay');
+  document.getElementById('link-edit-title').textContent = stepName;
+  document.getElementById('link-edit-suggestion').textContent = suggestion.label;
+  document.getElementById('link-edit-input').value = existing;
+  document.getElementById('link-edit-input').disabled = isAutoLinked;
+  document.getElementById('link-edit-save').onclick = () => {
+    if (!isAutoLinked) {
+      let val = document.getElementById('link-edit-input').value.trim();
+      if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+        val = 'https://' + val;
+      }
+      stepLinks[idx] = val;
+      saveStepLinks();
+      renderAll();
+    }
+    closeLinkEditModal();
+  };
+  document.getElementById('link-edit-remove').onclick = () => {
+    if (!isAutoLinked) { stepLinks[idx] = ''; saveStepLinks(); renderAll(); }
+    closeLinkEditModal();
+  };
+  document.getElementById('link-edit-open').style.display = (existing && !isAutoLinked) || isAutoLinked ? '' : 'none';
+  document.getElementById('link-edit-open').onclick = () => window.open(stepLinks[idx], '_blank');
+  modal.classList.add('open');
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('link-edit-input').focus(), 50);
+}
+
+function closeLinkEditModal() {
+  document.getElementById('link-edit-modal').classList.remove('open');
+  document.getElementById('link-edit-overlay').classList.remove('open');
+}
+
+// Maps first-incomplete-step index → actionable status text
+const NEXT_ACTION = [
+  'Upload Placeholder Note',
+  'Update Disposition List',
+  'Share Zoom Link',
+  'Update Hours in Time2Track',
+  'Update Supervisor Log',
+  'Write Note & Tag Sup./TA',
+  'Upload Note to EPIC',
+];
+
+function nextActionText(steps) {
+  for (let i = 0; i < steps.length; i++) {
+    if (!steps[i]) return NEXT_ACTION[i];
+  }
+  return 'COMPLETE';
+}
+
+function deriveStatus(steps) {
+  const done = steps.filter(Boolean).length;
+  if (done === 7) return 'COMPLETE';
+  return nextActionText(steps);
+}
+
+function stepsHtml(steps, sessionId, interactive=false) {
+  return steps.map((v,i) => {
+    const cls = v ? 'done' : 'pending';
+    const name = STEP_NAMES[i];
+    if (interactive) {
+      return `<span class="dot-wrap"><span class="dot ${cls}" onclick="toggleStepInline(${sessionId},${i},this)"></span><span class="tip">${name}</span></span>`;
+    }
+    return `<span class="dot-wrap"><span class="dot ${cls}"></span><span class="tip">${name}</span></span>`;
+  }).join('');
+}
+
+let currentSessionId = null;
+
+function openModal(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  currentSessionId = id;
+  document.getElementById('modal-title').textContent = `${s.client} — ${s.visit}`;
+  document.getElementById('modal-meta').textContent = `Appt: ${fmtDate(s.appt)}`;
+
+  document.getElementById('modal-deadline-info').innerHTML = '';
+
+  const stepsEl = document.getElementById('modal-steps');
+  stepsEl.innerHTML = s.steps.map((v,i) => `
+    <div class="step-item ${v?'done-step':''}" onclick="toggleStep(${id},${i})">
+      <div class="step-check">
+        ${v?'<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>':''}
+      </div>
+      <span class="step-name">${STEP_NAMES[i]}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'detail-modal') currentSessionId = null;
+  renderAll();
+}
+
+function handleOverlayClick(e) {
+  if (e.target === e.currentTarget) closeModal(e.currentTarget.id);
+}
+
+function refreshModalSteps(s, sessionId) {
+  var stepsEl = document.getElementById('modal-steps');
+  if (!stepsEl) return;
+  var out = '';
+  for (var i = 0; i < s.steps.length; i++) {
+    var v = s.steps[i];
+    var checkIcon = v ? '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>' : '';
+    out += '<div class="step-item ' + (v ? 'done-step' : '') + '" onclick="toggleStep(' + sessionId + ',' + i + ',this)">';
+    out += '<div class="step-check">' + checkIcon + '</div>';
+    out += '<span class="step-name">' + STEP_NAMES[i] + '</span>';
+    out += '</div>';
+  }
+  stepsEl.innerHTML = out;
+}
+
+function toggleStep(sessionId, stepIdx, el) {
+  var s = sessions.find(function(x) { return x.id === sessionId; });
+  if (!s) return;
+  var turning_on = !s.steps[stepIdx];
+  var stepsAfter = s.steps.map(function(v,i) { return i === stepIdx ? (turning_on ? 1 : 0) : v; });
+  var wouldComplete = turning_on && stepsAfter.every(Boolean);
+
+  if (wouldComplete) {
+    if (!window.confirm('Mark ' + s.client + ' ' + s.visit + ' as complete?\nAll 7 tasks done?')) return;
+  }
+
+  pushUndo({id: sessionId, steps: s.steps.slice()});
+  s.steps[stepIdx] = turning_on ? 1 : 0;
+  s.status = deriveStatus(s.steps);
+  if (turning_on && el) {
+    el.classList.remove('row-flash-anim');
+    void el.offsetWidth;
+    el.style.transition = 'background 0.3s';
+    el.style.background = 'oklch(from var(--success) l c h / 0.2)';
+    setTimeout(function() { el.style.background = ''; }, 400);
+    var check = el.querySelector('.step-check');
+    if (check) burstParticles(check);
+  }
+  saveSessions();
+  refreshModalSteps(s, sessionId);
+  renderAll();
+  if (wouldComplete) {
+    launchConfetti();
+    setTimeout(function() { starBurstKPI(); }, 300);
+  }
+}
+
+
+
+
+function toggleStepInline(sessionId, stepIdx, dotEl) {
+  const s = sessions.find(x => x.id === sessionId);
+  if (!s) return;
+  const turning_on = !s.steps[stepIdx];
+  const stepsAfter = s.steps.map((v,i) => i === stepIdx ? (turning_on ? 1 : 0) : v);
+  const wouldComplete = turning_on && stepsAfter.every(Boolean);
+
+  if (wouldComplete) {
+    if (!window.confirm('Mark ' + s.client + ' ' + s.visit + ' as complete?\nAll 7 tasks done?')) return;
+  }
+
+  pushUndo({id: sessionId, steps: [...s.steps]});
+  s.steps[stepIdx] = turning_on ? 1 : 0;
+  s.status = deriveStatus(s.steps);
+  saveSessions();
+
+  if (wouldComplete) {
+    if (dotEl) { animateDot(dotEl); flashRow(dotEl); }
+    setTimeout(() => {
+      renderAll();
+      launchConfetti();
+      setTimeout(() => starBurstKPI(), 300);
+    }, 120);
+  } else {
+    if (turning_on && dotEl) {
+      animateDot(dotEl);
+      flashRow(dotEl);
+      setTimeout(() => renderAll(), 120);
+    } else {
+      renderAll();
+    }
+  }
+}
+
+
+function markAllDone() {
+  const s = sessions.find(x => x.id === currentSessionId);
+  if (!s) return;
+  s.steps = [1,1,1,1,1,1,1];
+  s.status = 'COMPLETE';
+  closeModal('detail-modal');
+}
+
+
+// ── Particle burst on dot completion ─────────────────────────────────
+const PARTICLE_COLORS = ['#437a22','#6daa45','#a8e063','#d4efcc','#fff'];
+function burstParticles(dotEl) {
+  const rect = dotEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (i / count) * 2 * Math.PI + Math.random() * 0.4;
+    const dist = 28 + Math.random() * 22;
+    p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+    p.style.left = (cx - 3.5) + 'px';
+    p.style.top  = (cy - 3.5) + 'px';
+    p.style.background = PARTICLE_COLORS[i % PARTICLE_COLORS.length];
+    p.style.animationDelay = (Math.random() * 60) + 'ms';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 650);
+  }
+}
+
+function animateDot(dotEl) {
+  dotEl.classList.remove('pop-anim');
+  void dotEl.offsetWidth; // reflow to restart
+  dotEl.classList.add('pop-anim');
+  burstParticles(dotEl);
+  setTimeout(() => dotEl.classList.remove('pop-anim'), 450);
+}
+
+function flashRow(dotEl) {
+  const row = dotEl.closest('tr');
+  if (!row) return;
+  row.classList.remove('row-flash-anim');
+  void row.offsetWidth;
+  row.classList.add('row-flash-anim');
+  setTimeout(() => row.classList.remove('row-flash-anim'), 650);
+}
+
+
+
+
+
+
+function doDelete(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  if (!window.confirm('Delete ' + s.client + ' ' + s.visit + '?\nYou can undo with the Undo button.')) return;
+  const idx = sessions.findIndex(x => x.id === id);
+  const snap = JSON.parse(JSON.stringify(sessions[idx]));
+  pushUndo({ type: 'delete', session: snap, idx });
+  sessions = sessions.filter(x => x.id !== id);
+  saveSessions();
+  renderAll();
+}
+
+function doDeleteCurrent() {
+  if (currentSessionId === null) return;
+  doDelete(currentSessionId);
+  closeModal('detail-modal');
+}
+
+
+function deleteSession(id, e) {
+  if (e) e.stopPropagation();
+  sessions = sessions.filter(x => x.id !== id);
+  renderAll();
+}
+
+function deleteCurrentSession() {
+  if (currentSessionId === null) return;
+  sessions = sessions.filter(x => x.id !== currentSessionId);
+  closeModal('detail-modal');
+  renderAll();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const total      = sessions.length;
+  const complete   = sessions.filter(s => s.status === 'COMPLETE').length;
+  const inReview    = sessions.filter(s => s.status === 'Upload Note to EPIC').length;
+  const inProgress  = sessions.filter(s => s.status !== 'COMPLETE' && s.steps.some(v => v === 1)).length;
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi"><div class="kpi-val">${total}</div><div class="kpi-label">Total Sessions</div></div>
+    <div class="kpi" id="kpi-complete" style="position:relative;overflow:visible"><div class="kpi-val" id="kpi-complete-val" style="color:var(--success)">${complete}</div><div class="kpi-label">Complete</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--warning)">${inProgress}</div><div class="kpi-label">In Progress</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--primary)">${inReview}</div><div class="kpi-label">In Review</div></div>
+  `;
+}
+
+function sessionRow(s, showStepDots=true) {
+  return `<tr>
+    <td><span class="client-code row-open-btn" onclick="openModal(${s.id})" title="View session details">${s.client}</span></td>
+    <td style="white-space:nowrap" class="row-open-btn" onclick="openModal(${s.id})">${s.visit}</td>
+    <td style="white-space:nowrap" class="row-open-btn" onclick="openModal(${s.id})">${fmtDate(s.appt)}</td>
+    ${showStepDots?`<td>${statusBadge(s.status, s.id)}</td><td><div class="steps">${stepsHtml(s.steps,s.id,true)}</div></td>`:''}
+    <td><button class="del-btn" onclick="doDelete(${s.id})" title="Delete session">✕</button></td>
+  </tr>`;
+}
+
+function renderDashboard() {
+  // Refresh client filter options
+  const clientSel = document.getElementById('dash-filter-client');
+  if (clientSel) {
+    const currentClient = clientSel.value;
+    const clients = [...new Set(sessions.map(s => s.client))].sort();
+    clientSel.innerHTML = '<option value="">All Clients</option>' +
+      clients.map(c => `<option value="${c}"${c===currentClient?' selected':''}>${c}</option>`).join('');
+  }
+  const filterClient = clientSel ? clientSel.value : '';
+  const filterStep   = document.getElementById('dash-filter-step') ? document.getElementById('dash-filter-step').value : '';
+
+  const incomplete = sessions.filter(s => {
+    if (s.status === 'COMPLETE') return false;
+    if (filterClient && s.client !== filterClient) return false;
+    if (filterStep && s.status !== filterStep) return false;
+    return true;
+  });
+
+  const attnTbody = document.getElementById('attention-tbody');
+  attnTbody.innerHTML = incomplete.length
+    ? incomplete.map(s => sessionRow(s)).join('')
+    : '<tr><td colspan="5"><div class="empty"><div class="empty-icon">✅</div>No sessions match this filter.</div></td></tr>';
+}
+
+
+function renderAllSessions() {
+  // Refresh client dropdown
+  const clientSel = document.getElementById('all-filter-client');
+  if (clientSel) {
+    const cur = clientSel.value;
+    const clients = [...new Set(sessions.map(s => s.client))].sort();
+    clientSel.innerHTML = '<option value="">All Clients</option>' +
+      clients.map(c => `<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+  }
+  const filterClient = clientSel ? clientSel.value : '';
+  const filterStep   = (document.getElementById('all-filter-step') || {}).value || '';
+
+  const filtered = sessions.filter(s => {
+    if (filterClient && s.client !== filterClient) return false;
+    if (filterStep === 'COMPLETE') return s.status === 'COMPLETE';
+    if (filterStep && s.status !== filterStep) return false;
+    return true;
+  });
+
+  document.getElementById('sessions-count').textContent = `${filtered.length} of ${sessions.length} sessions`;
+
+  document.getElementById('all-tbody').innerHTML = filtered.length
+    ? filtered.map(s => {
+        return `<tr>
+          <td><span class="client-code row-open-btn" onclick="openModal(${s.id})" title="View details">${s.client}</span></td>
+          <td class="row-open-btn" onclick="openModal(${s.id})">${s.visit}</td>
+          <td class="row-open-btn" onclick="openModal(${s.id})">${fmtDate(s.appt)}</td>
+          <td>${statusBadge(s.status)}</td>
+          ${s.steps.map((v,i)=>`<td style="padding:0.55rem 0.4rem"><span class="dot-wrap"><span class="dot ${v?'done':'pending'}" onclick="toggleStepInline(${s.id},${i},this)"></span><span class="tip">${STEP_NAMES[i]}</span></span></td>`).join('')}
+          <td><button class="del-btn" onclick="doDelete(${s.id})" title="Delete">✕</button></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="12"><div class="empty"><div class="empty-icon">🔍</div>No sessions match this filter.</div></td></tr>';
+}
+
+function addOneYear(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function updateReqField(id, field, value) {
+  const r = requirements.find(x => x.id === id);
+  if (!r) return;
+  r[field] = value;
+  // Auto-update nextDue for 365 Review when lastDone changes
+  if (field === 'lastDone' && r.type === '365 Review') {
+    r.nextDue = addOneYear(value);
+    const nextEl = document.getElementById('next-' + id);
+    if (nextEl) nextEl.value = r.nextDue;
+  }
+}
+
+function renderRequirements() {
+  // Group by client
+  const clients = [...new Set(requirements.map(r => r.client))].sort();
+  const DOC_TYPES = ['365 Review', 'Integrated Report', 'Service Plan'];
+
+  document.getElementById('req-grid').innerHTML = clients.map(client => {
+    const clientReqs = DOC_TYPES.map(type => requirements.find(r => r.client === client && r.type === type)).filter(Boolean);
+    return `<div class="req-client-block">
+      <div class="req-client-name">${client}</div>
+      <div class="req-doc-grid">
+        ${clientReqs.map(r => {
+          const is365 = r.type === '365 Review';
+          return `<div class="req-doc-card">
+            <div class="req-doc-title">${r.type}</div>
+            <div class="req-field-row">
+              <label class="req-field-label">Last completed on</label>
+              <input class="req-date-input" type="date" id="last-${r.id}"
+                value="${r.lastDone}"
+                onchange="updateReqField('${r.id}','lastDone',this.value)">
+            </div>
+            <div class="req-field-row">
+              <label class="req-field-label">Next due on${is365 ? ' <span class="req-auto-badge">auto</span>' : ''}</label>
+              <input class="req-date-input" type="date" id="next-${r.id}"
+                value="${r.nextDue}"
+                ${is365 ? 'readonly style="opacity:0.7;background:var(--surface-2,var(--surface))"' : ''}
+                onchange="${is365 ? '' : `updateReqField('${r.id}','nextDue',this.value)`}">
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+function cycleReqStatus(id) {
+  const r = requirements.find(x => x.id === id);
+  if (!r) return;
+  const cycle = ['OVERDUE','NOT STARTED','IN PROGRESS','COMPLETE'];
+  const idx = cycle.indexOf(r.status);
+  r.status = cycle[(idx+1)%cycle.length];
+  renderRequirements();
+}
+
+
+// ── Calendar ────────────────────────────────────────────────────────────────
+let calOpen = true;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+
+
+// ── Confirm modal ────────────────────────────────────────────────────────────
+let _confirmCallback = null;
+
+function showConfirmModal(title, body, okLabel, onOk, okColor) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-body').innerHTML = body;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.textContent = okLabel || 'Confirm';
+  btn.style.background = okColor || 'var(--primary)';
+  _confirmCallback = onOk;
+  btn.onclick = () => {
+    const cb = _confirmCallback;
+    closeConfirmModal();
+    if (cb) cb();
+  };
+  document.getElementById('confirm-overlay').style.display = 'block';
+  document.getElementById('confirm-modal').style.display = 'block';
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirm-overlay').style.display = 'none';
+  document.getElementById('confirm-modal').style.display = 'none';
+  _confirmCallback = null;
+}
+
+// ── KPI star burst ───────────────────────────────────────────────────────────
+function starBurstKPI() {
+  const kpi = document.getElementById('kpi-complete');
+  const val = document.getElementById('kpi-complete-val');
+  if (!kpi) return;
+
+  // Pop/scale animation on the number
+  if (val) {
+    val.style.transition = 'transform 0.15s ease-out, color 0.2s';
+    val.style.transform = 'scale(1.6)';
+    val.style.color = '#FFD166';
+    setTimeout(() => {
+      val.style.transform = 'scale(1)';
+      val.style.color = 'var(--success)';
+    }, 350);
+  }
+
+  // Burst sparkle stars around the KPI box
+  if (!kpi.getBoundingClientRect) return;
+  const rect = kpi.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const stars = ['✦','★','✨','⭐','✦','★','✦'];
+  stars.forEach((char, i) => {
+    const el = document.createElement('span');
+    el.textContent = char;
+    el.style.cssText = [
+      'position:fixed',
+      'left:' + cx + 'px',
+      'top:' + cy + 'px',
+      'font-size:' + (14 + Math.random() * 10) + 'px',
+      'color:' + ['#FFD166','#06D6A0','#6C63FF','#EF476F','#F4A261'][i % 5],
+      'pointer-events:none',
+      'z-index:9999',
+      'transform:translate(-50%,-50%)',
+      'transition:all 0.8s ease-out',
+      'opacity:1',
+    ].join(';');
+    document.body.appendChild(el);
+    const angle = (i / stars.length) * Math.PI * 2;
+    const dist = 60 + Math.random() * 40;
+    setTimeout(() => {
+      el.style.left = (cx + Math.cos(angle) * dist) + 'px';
+      el.style.top  = (cy + Math.sin(angle) * dist) + 'px';
+      el.style.opacity = '0';
+      el.style.fontSize = '8px';
+    }, 20);
+    setTimeout(() => el.remove(), 900);
+  });
+}
+
+function toggleCalendar() {
+  // Calendar is always visible now — no-op kept for compatibility
+  renderCalendar();
+}
+
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function calDotColor(status) {
+  if (status === 'COMPLETE') return '#22c55e';
+  if (status === 'OVERDUE')  return '#ef4444';
+  return '#f59e0b';
+}
+
+function renderCalendar() {
+  const label = document.getElementById('cal-month-label');
+  const grid  = document.getElementById('cal-grid');
+  if (!label || !grid) return;
+
+  const monthNames = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+  label.textContent = monthNames[calMonth] + ' ' + calYear;
+
+  // Build day-of-week header
+  const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = '<div class="cal-dow-header">' +
+    dows.map(d => '<div class="cal-dow-cell">' + d + '</div>').join('') +
+    '</div><div class="cal-weeks">';
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev  = new Date(calYear, calMonth, 0).getDate();
+  const today = new Date();
+  const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  // Index sessions by date string
+  const byDate = {};
+  sessions.forEach(s => {
+    if (!s.appt) return;
+    const key = s.appt; // YYYY-MM-DD
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(s);
+  });
+
+  for (let i = 0; i < totalCells; i++) {
+    let day, month = calMonth, year = calYear, otherMonth = false;
+    if (i < firstDay) {
+      day = daysInPrev - firstDay + i + 1;
+      month = calMonth - 1; if (month < 0) { month = 11; year--; }
+      otherMonth = true;
+    } else if (i >= firstDay + daysInMonth) {
+      day = i - firstDay - daysInMonth + 1;
+      month = calMonth + 1; if (month > 11) { month = 0; year++; }
+      otherMonth = true;
+    } else {
+      day = i - firstDay + 1;
+    }
+
+    const pad = n => String(n).padStart(2,'0');
+    const dateKey = year + '-' + pad(month + 1) + '-' + pad(day);
+    const daySessions = byDate[dateKey] || [];
+    const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+
+    let cls = 'cal-day';
+    if (otherMonth) cls += ' cal-other-month';
+    if (isToday) cls += ' cal-today';
+    if (daySessions.length > 0) cls += ' cal-has-sessions';
+    else if (!otherMonth) cls += ' cal-empty-clickable';
+
+    const clickAttr = daySessions.length === 0 && !otherMonth
+      ? 'data-empty-date="' + dateKey + '" onclick="calClickEmpty(this.dataset.emptyDate)"'
+      : '';
+
+    const dots = daySessions.map(s =>
+      '<span class="cal-dot" style="background:' + calDotColor(s.status) + '" ' +
+      'onclick="event.stopPropagation();openModal(' + s.id + ')" title="' + s.client + ' ' + s.visit + '">' +
+      '<span class="cal-dot-label">' + s.client + ' ' + s.visit + '</span></span>'
+    ).join('');
+
+    html += '<div class="' + cls + '" ' + clickAttr + '>' +
+      '<div class="cal-day-num">' + day + '</div>' +
+      (dots ? '<div class="cal-dots">' + dots + '</div>' : '') +
+      '</div>';
+  }
+
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
+function calClickEmpty(dateStr) {
+  // Open Add modal pre-filled with this date
+  openAddModal();
+  setTimeout(() => {
+    const d = document.getElementById('f-date');
+    if (d) d.value = dateStr;
+  }, 50);
+}
+
+function renderAll() {
+  renderKPIs();
+  renderDashboard();
+  renderAllSessions();
+  renderRequirements();
+  renderCoach();
+  if (calOpen) renderCalendar();
+}
+
+
+// ── COACH ─────────────────────────────────────────────────────────────
+let coachTimerInterval = null;
+let coachPickedId = null;
+let coachCurrentMode = null;
+let coachBottleneckStartId = null;
+
+function renderCoach() {
+  const shell = document.getElementById('coach-shell');
+  if (!shell) return;
+  const incomplete = sessions.filter(s => s.status !== 'COMPLETE');
+  if (incomplete.length === 0) {
+    shell.innerHTML = `<div class="coach-wrap"><div class="coach-all-done">
+      <div class="coach-all-done-icon">🎉</div>
+      <h2>All caught up.</h2>
+      <p>Nothing in the queue. You did it.</p>
+    </div></div>`;
+    return;
+  }
+  coachShowEntry();
+}
+
+function coachShowEntry() {
+  coachPickedId = null; coachCurrentMode = null;
+  clearCoachTimer();
+  const shell = document.getElementById('coach-shell');
+  const incomplete = sessions.filter(s => s.status !== 'COMPLETE');
+  shell.innerHTML = `<div class="coach-wrap coach-screen">
+    <div class="coach-entry">
+      <div class="coach-entry-icon">🧭</div>
+      <div class="coach-entry-title">Where are you right now?</div>
+      <div class="coach-entry-sub">Select the option that most closely applies.</div>
+    </div>
+    <div class="entry-btn-grid">
+      <button class="entry-btn" onclick="coachFlow('start')">
+        <span class="entry-btn-icon">▶</span>
+        <span>Ready to work<span class="entry-btn-sub">When you are ready to work, the main obstacle is often deciding what to do first. Begin with the next unfinished task.</span></span>
+      </button>
+      <button class="entry-btn" onclick="coachFlow('stuck')">
+        <span class="entry-btn-icon">⏸</span>
+        <span>I'm stuck<span class="entry-btn-sub">Getting started is difficult when a task feels unclear, effortful, or too large. Reduce it to one small, specific action.</span></span>
+      </button>
+      <button class="entry-btn" onclick="coachFlow('overwhelmed')">
+        <span class="entry-btn-icon">🌊</span>
+        <span>I'm overwhelmed<span class="entry-btn-sub">Overwhelm happens when too many tasks compete for your attention at once. Narrow the focus and choose one clear next step.</span></span>
+      </button>
+      <button class="entry-btn" onclick="coachFlow('behind')">
+        <span class="entry-btn-icon">🔍</span>
+        <span>Your bottleneck<span class="entry-btn-sub">This is the step that's incomplete most often. Click here to find out where you're getting stuck on the most.</span></span>
+      </button>
+    </div>
+    <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-top:1.25rem">${incomplete.length} session${incomplete.length!==1?'s':''} pending</p>
+  </div>`;
+}
+
+function getTopSession() {
+  const incomplete = sessions.filter(s => s.status !== 'COMPLETE');
+  if (coachPickedId !== null) {
+    const picked = incomplete.find(s => s.id === coachPickedId);
+    if (picked) return picked;
+  }
+  return [...incomplete].sort((a,b) => a.steps.filter(Boolean).length - b.steps.filter(Boolean).length)[0];
+}
+
+
+function pickRandomTask() {
+  const incomplete = sessions.filter(s => s.status !== 'COMPLETE');
+  if (incomplete.length === 0) return;
+  const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
+  // Temporarily swap top session by reordering — store picked id
+  coachPickedId = pick.id;
+  coachFlow(coachCurrentMode || 'start');
+}
+
+function coachFlow(mode) {
+  clearCoachTimer();
+  const shell = document.getElementById('coach-shell');
+  const top = getTopSession();
+  if (!top) { renderCoach(); return; }
+  const stepsDone = top.steps.filter(Boolean).length;
+  const stepsLeft = 7 - stepsDone;
+
+  const nextStepIdx = top.steps.findIndex(v => !v);
+  const nextStepUrl = nextStepIdx >= 0 ? (stepLinks[nextStepIdx] || '') : '';
+  const linkBtn = nextStepUrl
+    ? `<a href="${nextStepUrl}" target="_blank" class="c-btn c-btn-ghost" style="text-decoration:none">Open ${STEP_NAMES[nextStepIdx]} ↗</a>`
+    : '';
+
+  const taskCard = `
+    <div class="one-task-card">
+      <div class="one-task-action">${top.status}</div>
+      <div class="one-task-client">
+        <span class="queue-client">${top.client}</span>
+        ${top.visit} · ${stepsLeft} step${stepsLeft!==1?'s':''} left
+      </div>
+      <div class="coach-steps-preview">${stepsHtml(top.steps, top.id, true)}</div>
+      <div class="coach-btn-row" style="margin-top:1rem">
+        <button class="c-btn c-btn-primary" onclick="coachMarkDone(${top.id})">
+          ✓ Done — next step
+        </button>
+        ${linkBtn}
+        <button class="c-btn c-btn-ghost" onclick="coachShowEntry()">← Back</button>
+      </div>
+    </div>`;
+
+  coachCurrentMode = mode;
+  const diffTaskBtn = `<button class="c-btn c-btn-ghost" onclick="coachPickedId=null;pickRandomTask()">↺ Choose a different task</button>`;
+
+  if (mode === 'start') {
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <span class="coach-back" onclick="coachShowEntry()">← Back</span>
+      <div class="coach-section-label">Task initiation</div>
+      <div class="coach-headline">Start here.</div>
+      ${taskCard}
+      <div class="coach-btn-row">
+        <button class="c-btn c-btn-ghost" onclick="coachTimer(90)">⏱ Set 90-sec timer</button>
+        ${diffTaskBtn}
+        <button class="c-btn c-btn-ghost" onclick="coachShowQueue()">See full queue</button>
+      </div>
+    </div>`;
+
+  } else if (mode === 'stuck') {
+    const readOnlySteps = stepsHtml(top.steps, top.id, false);
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <span class="coach-back" onclick="coachShowEntry()">← Back</span>
+      <div class="coach-section-label">Feeling stuck?</div>
+      <div class="coach-headline">Let's make the task small.</div>
+      <div class="one-task-card">
+        <div class="one-task-action">${top.status}</div>
+        <div class="one-task-client">
+          <span class="queue-client">${top.client}</span>
+          ${top.visit} · ${stepsLeft} step${stepsLeft!==1?'s':''} left
+        </div>
+        <div class="coach-steps-preview" style="pointer-events:none">${readOnlySteps}</div>
+        <div style="margin-top:1rem">
+          <button class="c-btn c-btn-primary" style="width:100%;justify-content:center;font-size:1rem;padding:0.7rem" onclick="coachFlow('toosmall')">Click here to start</button>
+        </div>
+      </div>
+      <div class="coach-btn-row">
+        <button class="c-btn c-btn-ghost" onclick="coachTimer(30)">⏱ 30-second timer</button>
+        ${diffTaskBtn}
+      </div>
+    </div>`;
+
+  } else if (mode === 'toosmall') {
+    const idx = top.steps.findIndex(v => !v);
+    const stepUrl = stepLinks[idx] || '';
+    const microStepsRaw = [
+      ['Open a blank note', 'Type the client name and date', 'Save it — even empty'],
+      ['Open the Disposition List', 'Find the client row', 'Add today\'s date'],
+      ['Open the Zoom recording folder', 'Find today\'s session', 'Copy the link'],
+      ['Open Time2Track', 'Find today\'s session slot', 'Enter the hours'],
+      ['Open the Supervisor Log', 'Find the relevant week tab', 'Log the client info & session dates'],
+      ['Open the note draft', 'Write one bad sentence', 'Tag supervisor — done'],
+      ['Open Epic', 'Find the client chart', 'Paste or upload the note'],
+    ];
+    const microRaw = microStepsRaw[idx] || microStepsRaw[0];
+    // Step 1 gets a hyperlink if one exists for this step
+    const micro = microRaw.map((m, i) => {
+      if (i === 0 && stepUrl) {
+        return `<a href="${stepUrl}" target="_blank" style="color:var(--primary);text-decoration:underline">${m} ↗</a>`;
+      }
+      return m;
+    });
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <span class="coach-back" onclick="coachFlow('stuck')">← Back</span>
+      <div class="coach-bottleneck">Lowering activation cost</div>
+      <div class="coach-headline">Forget the whole task. Just do step 1 of 3.</div>
+      <div class="coach-body">These take under 30 seconds each.</div>
+      <div class="one-task-card" style="border-color:var(--divider)">
+        ${micro.map((m,i) => `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0;${i<micro.length-1?'border-bottom:1px solid var(--divider)':''}">
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--surface-off2);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:var(--muted);flex-shrink:0">${i+1}</span>
+          <span style="font-size:0.9rem">${m}</span>
+        </div>`).join('')}
+      </div>
+      <div class="coach-timer-challenge" style="margin:0.75rem 0 0.5rem">
+        <div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.4rem;text-align:center">Can you beat the timer?</div>
+        <button class="c-btn c-btn-ghost" style="width:100%;justify-content:center" id="beat-timer-btn" onclick="coachCountdownThenStart(nextStepIdx===6?600:90)">⏱ Start timer (${nextStepIdx===6?'10 min':'90 sec'})</button>
+      </div>
+      <div class="coach-btn-row" style="margin-top:0.75rem">
+        <button class="c-btn c-btn-success" onclick="coachMicroDone(${top.id})">✓ I did it</button>
+        <button class="c-btn c-btn-ghost" onclick="coachFlow('bottleneck')">Still can't start</button>
+      </div>
+    </div>`;
+
+  } else if (mode === 'overwhelmed') {
+    const incomplete = sessions.filter(s => s.status !== 'COMPLETE');
+    const byClient = {};
+    incomplete.forEach(s => { if(!byClient[s.client]) byClient[s.client]=[]; byClient[s.client].push(s); });
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <span class="coach-back" onclick="coachShowEntry()">← Back</span>
+      <div class="coach-section-label">Overwhelmed?</div>
+      <div class="coach-headline">Let's focus on just one right now.</div>
+      <div style="font-size:0.9rem;color:var(--muted);margin-bottom:1rem">Pick one client to work on now:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem">
+        ${Object.keys(byClient).map(c => `<button class="c-btn c-btn-ghost" style="font-size:1rem;padding:0.5rem 1.1rem" onclick="coachFocusClient('${c}')">${c}</button>`).join('')}
+      </div>
+      <div class="coach-btn-row">
+        <button class="c-btn c-btn-primary" onclick="coachFlow('start')">Just pick for me</button>
+      </div>
+    </div>`;
+
+  } else if (mode === 'bottleneck') {
+    const incomplete = sessions.filter(s => s.status !== 'COMPLETE');
+    const stepCounts = Array(7).fill(0);
+    incomplete.forEach(s => {
+      const firstPending = s.steps.findIndex(v => !v);
+      if (firstPending >= 0) stepCounts[firstPending]++;
+    });
+    const maxCount = Math.max(...stepCounts);
+    const bottleneckIdx = stepCounts.indexOf(maxCount);
+    const bottleneckName = STEP_NAMES[bottleneckIdx];
+    const bottleneckSessions = incomplete.filter(s => s.steps.findIndex(v => !v) === bottleneckIdx);
+    coachBottleneckStartId = bottleneckSessions[0] ? bottleneckSessions[0].id : null;
+
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <span class="coach-back" onclick="coachShowEntry()">← Back</span>
+      <div class="coach-bottleneck">Your bottleneck</div>
+      <div class="coach-headline">${bottleneckName}</div>
+      <div class="coach-body">${maxCount} session${maxCount!==1?'s':''} are stuck at this step — more than any other.</div>
+      <div class="one-task-card" style="border-color:var(--divider);margin-bottom:0.75rem">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:0.6rem">Sessions stuck here</div>
+        ${bottleneckSessions.map(s => `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid var(--divider);font-size:0.875rem">
+          <span class="queue-client">${s.client}</span>
+          <span style="color:var(--muted);font-size:0.8rem">${s.visit}</span>
+          <span style="color:var(--text);font-size:0.8rem;font-style:italic">${s.status}</span>
+        </div>`).join('')}
+      </div>
+      <div class="coach-body" style="font-size:0.85rem">Start with one. The step is the same for all of them.</div>
+      <div class="coach-btn-row">
+        <button class="c-btn c-btn-primary" onclick="startBottleneckSession()">Start with ${bottleneckSessions[0]?.client||'first'}</button>
+      </div>
+    </div>`;
+
+  } else if (mode === 'behind') {
+    // ── Bottleneck: find the step where the most sessions are stuck ────────────
+    const allPending = sessions.filter(s => s.status !== 'COMPLETE');
+    const stepCounts = Array(7).fill(0);
+    allPending.forEach(s => {
+      const firstPending = s.steps.findIndex(v => !v);
+      if (firstPending >= 0) stepCounts[firstPending]++;
+    });
+    const maxCount = Math.max(...stepCounts);
+    const bnIdx = stepCounts.indexOf(maxCount);
+    const bnName = STEP_NAMES[bnIdx];
+    const bnSessions = allPending.filter(s => s.steps.findIndex(v => !v) === bnIdx);
+    coachBottleneckStartId = bnSessions[0] ? bnSessions[0].id : null;
+
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <span class="coach-back" onclick="coachShowEntry()">← Back</span>
+      <div class="coach-section-label">I've been avoiding this</div>
+      <div class="coach-headline">Your bottleneck: ${bnName}</div>
+      <div class="coach-body">${maxCount} session${maxCount!==1?'s':''} are stuck at this step — more than any other. That's where to start.</div>
+      <div class="one-task-card" style="border-color:var(--divider);margin-bottom:0.75rem">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:0.6rem">Sessions stuck here</div>
+        ${bnSessions.map(s => `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.45rem 0;border-bottom:1px solid var(--divider);font-size:0.875rem;cursor:pointer" onclick="coachPickedId=${s.id};coachFlow('start')" title="Start this session">
+          <span class="queue-client" style="min-width:52px">${s.client}</span>
+          <span style="color:var(--muted);font-size:0.8rem;min-width:52px">${s.visit}</span>
+          <span style="background:var(--surface-off2);border-radius:4px;padding:0.1rem 0.45rem;font-size:0.75rem;color:var(--text)">${s.status}</span>
+        </div>`).join('')}
+      </div>
+      <div class="coach-body" style="font-size:0.85rem">Click a row to begin that session. The step is the same for all of them.</div>
+      <div class="coach-btn-row" style="margin-top:0.5rem">
+        <button class="c-btn c-btn-primary" onclick="startBottleneckSession()">Start with ${bnSessions[0]?.client||'first'}</button>
+      </div>
+    </div>`;
+  }
+}
+
+
+
+function coachFocusClient(clientCode) {
+  clearCoachTimer();
+  const shell = document.getElementById('coach-shell');
+  const clientSessions = sessions.filter(s => s.client === clientCode && s.status !== 'COMPLETE')
+    .sort((a,b) => a.steps.filter(Boolean).length - b.steps.filter(Boolean).length);
+  if (!clientSessions.length) { coachShowEntry(); return; }
+  const top = clientSessions[0];
+  const stepsLeft = 7 - top.steps.filter(Boolean).length;
+  shell.innerHTML = `<div class="coach-wrap coach-screen">
+    <span class="coach-back" onclick="coachFlow('overwhelmed')">← Back</span>
+    <div class="coach-bottleneck">Focus: ${clientCode}</div>
+    <div class="coach-headline">One task for ${clientCode}.</div>
+    <div class="one-task-card">
+      <div class="one-task-label">▶ Next step</div>
+      <div class="one-task-action">${top.status}</div>
+      <div class="one-task-client">
+        <span class="queue-client">${top.client}</span>
+        ${top.visit} · ${stepsLeft} step${stepsLeft!==1?'s':''} left
+      </div>
+      <div class="coach-steps-preview">${stepsHtml(top.steps, top.id, true)}</div>
+      <div class="coach-btn-row" style="margin-top:1rem">
+        <button class="c-btn c-btn-primary" onclick="coachMarkDone(${top.id})">✓ Done — next step</button>
+        <button class="c-btn c-btn-ghost" onclick="coachFlow('overwhelmed')">← Back</button>
+      </div>
+    </div>
+    ${clientSessions.length > 1 ? `<div style="font-size:0.8rem;color:var(--muted);margin-top:0.5rem">${clientSessions.length-1} more session${clientSessions.length>2?'s':''} for ${clientCode} after this.</div>` : ''}
+  </div>`;
+}
+
+function coachMarkDone(sessionId) {
+  // Find and mark the next unchecked step for this session
+  const s = sessions.find(x => x.id === sessionId);
+  if (!s) return;
+  const idx = s.steps.findIndex(v => !v);
+  if (idx === -1) { renderCoach(); return; }
+  s.steps[idx] = 1;
+  s.status = deriveStatus(s.steps);
+  // Animate the dot in background
+  setTimeout(() => {
+    const dots = document.querySelectorAll(`.dot`);
+    // just re-render coach
+  }, 50);
+  renderAll();
+  // Stay on coach, show next step
+  const still = sessions.find(x => x.id === sessionId);
+  if (still && still.status !== 'COMPLETE') {
+    coachFlow('start');
+  } else {
+    // celebrate then return to entry
+    const shell = document.getElementById('coach-shell');
+    shell.innerHTML = `<div class="coach-wrap coach-screen">
+      <div class="coach-all-done" style="margin-bottom:1rem">
+        <div class="coach-all-done-icon">✅</div>
+        <h2>${still ? still.client + ' ' + still.visit + ' — complete!' : 'Session complete!'}</h2>
+        <p>That's a real step. Keep going or take a break.</p>
+      </div>
+      <div class="coach-btn-row" style="justify-content:center">
+        <button class="c-btn c-btn-primary" onclick="coachShowEntry()">Keep going</button>
+        <button class="c-btn c-btn-ghost" onclick="switchView('dashboard')">Dashboard</button>
+      </div>
+    </div>`;
+  }
+}
+
+function coachShowQueue() {
+  clearCoachTimer();
+  const shell = document.getElementById('coach-shell');
+  const incomplete = sessions.filter(s => s.status !== 'COMPLETE')
+    .sort((a,b) => a.steps.filter(Boolean).length - b.steps.filter(Boolean).length);
+  shell.innerHTML = `<div class="coach-wrap coach-screen">
+    <span class="coach-back" onclick="coachShowEntry()">← Back</span>
+    <div class="coach-bottleneck">Full queue</div>
+    <div class="coach-headline" style="margin-bottom:1rem">${incomplete.length} sessions remaining</div>
+    ${incomplete.map((s,i) => `
+      <div style="display:flex;align-items:center;gap:0.65rem;padding:0.6rem 0.75rem;background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-lg);margin-bottom:0.4rem;cursor:pointer" onclick="coachFocusClient('${s.client}')">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--surface-off2);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:var(--muted);flex-shrink:0">${i+1}</span>
+        <span class="queue-client">${s.client}</span>
+        <span style="flex:1;font-size:0.875rem">${s.status}</span>
+        <span style="font-size:0.75rem;color:var(--muted)">${s.visit}</span>
+      </div>`).join('')}
+    <div class="coach-btn-row" style="margin-top:0.75rem">
+      <button class="c-btn c-btn-primary" onclick="coachFlow('start')">Start with #1</button>
+    </div>
+  </div>`;
+}
+
+// ── Timer ──────────────────────────────────────────────────────────────
+function clearCoachTimer() {
+  if (coachTimerInterval) { clearInterval(coachTimerInterval); coachTimerInterval = null; }
+}
+
+function coachTimer(seconds) {
+  clearCoachTimer();
+  const strip = document.getElementById('coach-timer-strip');
+  if (!strip) {
+    // inject timer strip into current screen
+    const wrap = document.querySelector('.coach-wrap');
+    if (!wrap) return;
+    const div = document.createElement('div');
+    div.className = 'timer-strip';
+    div.id = 'coach-timer-strip';
+    div.innerHTML = `<span>⏱ Timer</span><span class="timer-count" id="timer-count">${seconds}</span><span style="color:var(--muted);font-size:0.8rem">sec — just make contact</span><button class="c-btn c-btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem;margin-left:auto" onclick="clearCoachTimer();this.closest('.timer-strip').remove()">Stop</button>`;
+    wrap.insertBefore(div, wrap.querySelector('.one-task-card') || wrap.firstChild);
+  }
+  let remaining = seconds;
+  coachTimerInterval = setInterval(() => {
+    remaining--;
+    const el = document.getElementById('timer-count');
+    if (el) el.textContent = remaining;
+    if (remaining <= 0) {
+      clearCoachTimer();
+      const strip2 = document.getElementById('coach-timer-strip');
+      if (strip2) strip2.innerHTML = `<span>⏱</span><span style="color:var(--success);font-weight:700">Time's up.</span><span style="color:var(--muted);font-size:0.8rem;flex:1">Did you make contact?</span>
+        <button class="c-btn c-btn-success" style="padding:0.3rem 0.7rem;font-size:0.8rem" onclick="this.closest('.timer-strip').remove()">Yes ✓</button>
+        <button class="c-btn c-btn-ghost" style="padding:0.3rem 0.7rem;font-size:0.8rem" onclick="coachFlow('toosmall')">Not yet</button>`;
+    }
+  }, 1000);
+}
+
+
+
+function exportData() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
+  const timeStr = pad(now.getHours()) + pad(now.getMinutes());
+  const ampm = now.getHours() < 12 ? 'am' : 'pm';
+  const hr = now.getHours() % 12 || 12;
+  const filename = 'doc-tracker-backup-' + dateStr + '-' + hr + pad(now.getMinutes()) + ampm + '.json';
+
+  const data = {
+    exportedAt: now.toISOString(),
+    sessions: sessions,
+    stepLinks: stepLinks,
+    requirements: requirements,
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.sessions) {
+        sessions.length = 0;
+        data.sessions.forEach(s => sessions.push(s));
+      }
+      if (data.stepLinks) {
+        data.stepLinks.forEach((v, i) => { stepLinks[i] = v; });
+      }
+      if (data.requirements) {
+        requirements.length = 0;
+        data.requirements.forEach(r => requirements.push(r));
+      }
+      saveSessions();
+      saveStepLinks();
+      sessions.forEach(s => { s.status = deriveStatus(s.steps); });
+      renderAll();
+      alert('✅ Data restored successfully from ' + file.name);
+    } catch(err) {
+      alert('❌ Could not read backup file. Make sure it\'s a valid .json export from this tracker.');
+    }
+  };
+  reader.readAsText(file);
+  input.value = ''; // reset so same file can be re-imported
+}
+
+function showSaveHelp() {
+  document.getElementById('save-help-overlay').style.display = 'block';
+  document.getElementById('save-help-modal').style.display = 'block';
+}
+
+function closeSaveHelp() {
+  document.getElementById('save-help-overlay').style.display = 'none';
+  document.getElementById('save-help-modal').style.display = 'none';
+}
+
+function resetAppData() {
+  localStorage.clear();
+  location.reload();
+}
+
+function startBottleneckSession() {
+  if (coachBottleneckStartId !== null) coachPickedId = coachBottleneckStartId;
+  coachFlow('stuck');
+}
+
+
+function launchConfetti() {
+  const container = document.getElementById('confetti-container');
+  if (!container) return;
+  const colors = ['#6C63FF','#43D9AD','#FFD166','#EF476F','#06D6A0','#118AB2'];
+  for (let i = 0; i < 48; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = [
+      `left:${Math.random()*100}%`,
+      `background:${colors[Math.floor(Math.random()*colors.length)]}`,
+      `animation-delay:${Math.random()*0.6}s`,
+      `animation-duration:${0.9 + Math.random()*0.8}s`,
+      `width:${6 + Math.random()*6}px`,
+      `height:${6 + Math.random()*6}px`,
+      `border-radius:${Math.random()>0.5?'50%':'2px'}`
+    ].join(';');
+    container.appendChild(el);
+  }
+}
+
+function coachMicroDone(id) {
+  // Mark the step done in data
+  const s = sessions.find(x => x.id === id);
+  if (s) {
+    const idx = s.steps.findIndex(v => !v);
+    if (idx >= 0) { s.steps[idx] = true; s.status = deriveStatus(s.steps); saveSessions(); }
+  }
+  clearCoachTimer();
+  const shell = document.getElementById('coach-shell');
+  if (!shell) return;
+  // Celebration screen, then auto-redirect to 'stuck' after 2.5s
+  shell.innerHTML = `<div class="coach-wrap coach-screen" style="align-items:center;justify-content:center;text-align:center;min-height:340px">
+    <div class="coach-celebrate-emoji">🎉</div>
+    <div class="coach-celebrate-confetti" id="coach-confetti-local"></div>
+    <div style="font-size:1.5rem;font-weight:700;margin:0.5rem 0">Nice work!</div>
+    <div style="color:var(--muted);margin-bottom:1.5rem">Step marked complete.</div>
+    <button class="c-btn c-btn-primary" onclick="coachFlow('stuck')">Keep going →</button>
+  </div>`;
+  setTimeout(() => { if (document.getElementById('confetti-container')) coachFlow('stuck'); }, 2800);
+}
+
+function coachCountdownThenStart(seconds) {
+  const btn = document.getElementById('beat-timer-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  let count = 3;
+  btn.textContent = count + '...';
+  const cd = setInterval(() => {
+    count--;
+    if (count > 0) {
+      btn.textContent = count + '...';
+    } else {
+      clearInterval(cd);
+      btn.textContent = 'GO!';
+      setTimeout(() => {
+        coachBeatTimer(seconds);
+      }, 400);
+    }
+  }, 1000);
+}
+
+function coachBeatTimer(seconds) {
+  const wrap = document.querySelector('.coach-wrap');
+  if (!wrap) return;
+  // remove old timer strip if any
+  const old = document.getElementById('coach-timer-strip');
+  if (old) old.remove();
+  const div = document.createElement('div');
+  div.className = 'timer-strip';
+  div.id = 'coach-timer-strip';
+  div.innerHTML = `<span>⏱</span><span class="timer-count" id="timer-count">${seconds}</span><span style="color:var(--muted);font-size:0.8rem">sec remaining</span><button class="c-btn c-btn-ghost" style="padding:0.25rem 0.6rem;font-size:0.78rem;margin-left:auto" onclick="clearCoachTimer();this.closest('.timer-strip').remove()">Stop</button>`;
+  const timerChallenge = wrap.querySelector('.coach-timer-challenge');
+  if (timerChallenge) timerChallenge.replaceWith(div);
+  else wrap.insertBefore(div, wrap.querySelector('.coach-btn-row'));
+  let remaining = seconds;
+  coachTimerInterval = setInterval(() => {
+    remaining--;
+    const el = document.getElementById('timer-count');
+    if (el) el.textContent = remaining;
+    if (remaining <= 0) {
+      clearCoachTimer();
+      const strip2 = document.getElementById('coach-timer-strip');
+      if (strip2) strip2.innerHTML = `<span>⏱</span><span style="color:var(--danger,#e55);font-weight:700">Time's up!</span><span style="color:var(--muted);font-size:0.8rem;flex:1">Did you beat it?</span>
+        <button class="c-btn c-btn-success" style="padding:0.3rem 0.7rem;font-size:0.8rem" onclick="coachCelebrate()">Yes ✓</button>
+        <button class="c-btn c-btn-ghost" style="padding:0.3rem 0.7rem;font-size:0.8rem" onclick="this.closest('.timer-strip').remove()">Not yet</button>`;
+    }
+  }, 1000);
+}
+
+function coachCelebrate() {
+  const shell = document.getElementById('coach-shell');
+  if (!shell) return;
+  shell.innerHTML = `<div class="coach-wrap coach-screen" style="align-items:center;justify-content:center;text-align:center;min-height:340px">
+    <div style="font-size:4rem;animation:celebPop 0.6s ease">🎉</div>
+    <div style="font-size:1.5rem;font-weight:700;margin:0.5rem 0">You beat the timer!</div>
+    <div style="color:var(--muted);margin-bottom:1.5rem">That's momentum.</div>
+    <button class="c-btn c-btn-primary" onclick="coachFlow('stuck')">Keep going →</button>
+  </div>`;
+}
+
+
+function switchViewDirect(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const tabs = document.querySelectorAll('.nav-tab');
+  const names = ['dashboard','sessions','requirements','coach'];
+  const idx = names.indexOf(name);
+  if (tabs[idx]) tabs[idx].classList.add('active');
+}
+
+// ── VIEW SWITCHING ────────────────────────────────────────────────────
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+
+// ── Client dropdown helpers ───────────────────────────────────────────
+let customClients = []; // extra clients added at runtime
+
+function handleClientSelect(sel) {
+  const newInput = document.getElementById('f-client-new');
+  if (sel.value === '__new__') {
+    newInput.style.display = 'block';
+    newInput.focus();
+  } else {
+    newInput.style.display = 'none';
+    newInput.value = '';
+  }
+}
+
+function getClientValue() {
+  const sel = document.getElementById('f-client');
+  if (sel.value === '__new__') {
+    return document.getElementById('f-client-new').value.trim();
+  }
+  return sel.value;
+}
+
+function refreshClientDropdown() {
+  const sel = document.getElementById('f-client');
+  if (!sel) return;
+  // Gather unique existing clients from sessions
+  const existing = [...new Set(sessions.map(s => s.client))].sort();
+  const builtIn = ['PCH1','PCH2','PCH3','PCH4'];
+  const all = [...new Set([...builtIn, ...existing, ...customClients])].sort();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select client —</option>' +
+    all.map(c => `<option value="${c}"${c===current?' selected':''}>${c}</option>`).join('') +
+    '<option value="__new__">+ Add new client…</option>';
+}
+
+// ── ADD SESSION ───────────────────────────────────────────────────────
+function openAddModal() {
+  refreshClientDropdown();
+  document.getElementById('f-client').value = '';
+  document.getElementById('f-client-new').style.display = 'none';
+  document.getElementById('f-client-new').value = '';
+  document.getElementById('f-visit').value = '';
+  document.getElementById('f-date').value = '';
+  document.getElementById('add-modal').classList.add('open');
+}
+
+function submitAddSession() {
+  const client = getClientValue();
+  let visit = document.getElementById('f-visit').value.trim();
+  if (visit && !/^visit\s/i.test(visit)) visit = 'Visit ' + visit;
+  const appt   = document.getElementById('f-date').value;
+  if (!client || !visit || !appt) {
+    alert('Please fill in Client, Visit #, and Session Date.');
+    return;
+  }
+  // Duplicate check
+  const visitNorm = (/^visit\s/i.test(visit) ? visit : 'Visit ' + visit).toLowerCase();
+  const duplicate = sessions.find(s => s.client === client && s.visit.toLowerCase() === visitNorm);
+  if (duplicate) {
+    alert(client + ' ' + (visitNorm.charAt(0).toUpperCase() + visitNorm.slice(1)) + ' already exists.');
+    return;
+  }
+  // Save new client for future use this session
+  if (!customClients.includes(client) &&
+      !['PCH1','PCH2','PCH3','PCH4'].includes(client) &&
+      !sessions.find(s => s.client === client)) {
+    customClients.push(client);
+  }
+  sessions.push({
+    id: nextId++,
+    client, appt, visit,
+    status: 'Upload Placeholder Note',
+    steps: [0,0,0,0,0,0,0]
+  });
+  pushUndo({ type: 'add', id: nextId - 1 });
+  closeModal('add-modal');
+  renderAll();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+const APP_VERSION = 'v1782170438';
+// Only clear stale data when this is a genuinely new build (version stamp changed)
+const previousVersion = localStorage.getItem('appVersion');
+if (previousVersion !== APP_VERSION) {
+  localStorage.removeItem('sessions');
+  localStorage.removeItem('stepLinks');
+}
+localStorage.setItem('appVersion', APP_VERSION);
+// Load persisted step changes
+loadPersistedSessions();
+// Auto-set Time2Track link (always)
+stepLinks[3] = 'https://app.time2track.com/activities';
+saveStepLinks();
+// Recompute status from steps for all sessions
+sessions.forEach(s => { s.status = deriveStatus(s.steps); });
+tryResumeAutoBackup();
+tryResumeDrive();
+try {
+  renderAll();
+} catch(e) {
+  console.error('renderAll failed:', e);
+  document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;padding:1rem;background:#e55;color:#fff;z-index:9999;font-family:sans-serif">App error — <button onclick="localStorage.clear();location.reload()" style="background:#fff;color:#e55;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-weight:700">Click here to reset</button></div>';
+}
+updateUndoBtn();
+
+// Keyboard shortcut: Ctrl+Z / Cmd+Z to undo
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    doUndo();
+  }
+});
+</script>
+
+<!-- Link Edit Modal -->
+<div id="link-edit-overlay" onclick="closeLinkEditModal()"></div>
+<div id="link-edit-modal">
+  <div style="font-weight:700;font-size:1rem" id="link-edit-title"></div>
+  <div style="font-size:0.8rem;color:var(--muted);font-style:italic" id="link-edit-suggestion"></div>
+  <input id="link-edit-input" type="url" placeholder="Paste a URL…"
+    style="width:100%;padding:0.6rem 0.8rem;border:1px solid var(--divider);border-radius:8px;background:var(--surface-off2);color:var(--text);font-size:0.9rem;box-sizing:border-box"
+    onkeydown="if(event.key==='Enter') document.getElementById('link-edit-save').click()">
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.25rem">
+    <button class="c-btn c-btn-primary" id="link-edit-save">Save</button>
+    <button class="c-btn c-btn-ghost" id="link-edit-open" style="display:none">Open ↗</button>
+    <button class="c-btn c-btn-ghost" id="link-edit-remove" style="margin-left:auto;color:var(--muted)">Remove link</button>
+    <button class="c-btn c-btn-ghost" onclick="closeLinkEditModal()">Cancel</button>
+  </div>
+</div>
+
+
+<!-- Drive Settings Modal -->
+<div id="drive-settings-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:399" onclick="closeDriveSettings()"></div>
+<div id="drive-settings-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:400;background:var(--surface);border:1px solid var(--divider);border-radius:16px;padding:1.75rem;width:min(480px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div style="font-weight:700;font-size:1.1rem">🔗 Connect Google Drive</div>
+    <button onclick="closeDriveSettings()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted)">✕</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:0.85rem;font-size:0.9rem;line-height:1.6">
+    <p style="margin:0;color:var(--muted)">Paste the <strong>OAuth Client ID</strong> from your Google Cloud project. This is saved only in your browser — never sent anywhere except Google.</p>
+    <input id="drive-settings-input" type="text" placeholder="xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" style="width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:0.85rem">
+    <div style="background:var(--surface-off2);border-radius:10px;padding:0.85rem;font-size:0.82rem;color:var(--muted)">
+      <div style="font-weight:700;margin-bottom:0.35rem;color:var(--text)">Don't have one yet?</div>
+      You'll need to create it once in <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" style="color:var(--primary)">Google Cloud Console</a> — see the setup guide for step-by-step instructions. It takes about 10 minutes.
+    </div>
+  </div>
+  <button onclick="saveDriveSettings()" style="margin-top:1.25rem;width:100%;padding:0.6rem;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9rem">Save & Connect</button>
+</div>
+
+<!-- Save Help Modal -->
+<div id="save-help-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:399" onclick="closeSaveHelp()"></div>
+<div id="save-help-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:400;background:var(--surface);border:1px solid var(--divider);border-radius:16px;padding:1.75rem;width:min(480px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div style="font-weight:700;font-size:1.1rem">💾 How to Save Your Data</div>
+    <button onclick="closeSaveHelp()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted)">✕</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:1rem;font-size:0.9rem;line-height:1.6">
+    <div style="background:var(--surface-off2);border-radius:10px;padding:1rem">
+      <div style="font-weight:700;margin-bottom:0.4rem">💾 Auto-Backup (recommended)</div>
+      <ol style="margin:0;padding-left:1.2rem;color:var(--muted)">
+        <li>Click the <strong>💾 Auto-Backup</strong> button in the top nav (Chrome/Edge only)</li>
+        <li>Choose or create a file — ideally inside a folder synced to Google Drive, Dropbox, or OneDrive</li>
+        <li>From then on, every change is silently written to that file — no clicking required</li>
+        <li>Your browser may ask you to re-grant permission once per browser session — just click the button again if it says "Click to resume"</li>
+      </ol>
+    </div>
+      <div style="font-weight:700;margin-bottom:0.4rem">⬇ Exporting (Backing Up)</div>
+      <ol style="margin:0;padding-left:1.2rem;color:var(--muted)">
+        <li>Click the <strong>⬇ Export</strong> button in the top nav</li>
+        <li>A <code>.json</code> file will download automatically — the filename includes today's date and time</li>
+        <li>Save it somewhere safe (same folder as this file, or a cloud folder like Google Drive)</li>
+        <li>Export regularly — especially after a productive session</li>
+      </ol>
+    </div>
+    <div style="background:var(--surface-off2);border-radius:10px;padding:1rem">
+      <div style="font-weight:700;margin-bottom:0.4rem">⬆ Importing (Restoring)</div>
+      <ol style="margin:0;padding-left:1.2rem;color:var(--muted)">
+        <li>Click the <strong>⬆ Import</strong> button in the top nav</li>
+        <li>Select your previously exported <code>.json</code> backup file</li>
+        <li>Your progress will restore instantly</li>
+        <li>Works even on a freshly downloaded version of the tracker</li>
+      </ol>
+    </div>
+    <div style="background:#fff3cd;border-radius:10px;padding:1rem;border:1px solid #ffe08a">
+      <div style="font-weight:700;margin-bottom:0.4rem">⚠️ When You Might Lose Progress</div>
+      <ul style="margin:0;padding-left:1.2rem;color:#6b5900">
+        <li>Clearing browser history or site data</li>
+        <li>Moving or renaming this HTML file</li>
+        <li>Opening the file in a different browser</li>
+        <li>Downloading a new version of the tracker</li>
+      </ul>
+      <div style="margin-top:0.5rem;font-weight:600;color:#6b5900">Always export before doing any of these.</div>
+    </div>
+    <div style="background:var(--surface-off2);border-radius:10px;padding:1rem">
+      <div style="font-weight:700;margin-bottom:0.4rem">✅ Best Practice</div>
+      <p style="margin:0;color:var(--muted)">Keep this file in a <strong>permanent folder</strong> (e.g. Desktop → "Doc Tracker"). Export a backup every Friday. Store the backups in Google Drive or iCloud so they survive a computer wipe.</p>
+    </div>
+  </div>
+  <button onclick="closeSaveHelp()" style="margin-top:1.25rem;width:100%;padding:0.6rem;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9rem">Got it</button>
+</div>
+
+<!-- Custom Confirm Modal -->
+<div id="confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8999" onclick="closeConfirmModal()"></div>
+<div id="confirm-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9000;background:#fff;border:2px solid #6C63FF;border-radius:16px;padding:1.5rem;width:min(380px,92vw);box-shadow:0 12px 48px rgba(0,0,0,0.35)">
+  <div id="confirm-title" style="font-weight:700;font-size:1.05rem;margin-bottom:0.6rem"></div>
+  <div id="confirm-body" style="font-size:0.9rem;color:var(--muted);line-height:1.5;margin-bottom:1.25rem"></div>
+  <div style="display:flex;gap:0.6rem;justify-content:flex-end">
+    <button onclick="closeConfirmModal()" style="padding:0.5rem 1rem;border:1px solid var(--divider);border-radius:8px;background:none;cursor:pointer;font-size:0.875rem">Cancel</button>
+    <button id="confirm-ok-btn" style="padding:0.5rem 1.1rem;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600;font-size:0.875rem">Confirm</button>
+  </div>
+</div>
+
+<div id="confetti-container" style="position:fixed;inset:0;pointer-events:none;z-index:9998;overflow:hidden"></div>
+</body>
+</html>

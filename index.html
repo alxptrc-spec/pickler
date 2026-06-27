@@ -2999,43 +2999,6 @@ function submitAddSession() {
   renderAll();
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────
-const APP_VERSION = 'v1782250187';
-// Only clear stale data when this is a genuinely new build (version stamp changed)
-const previousVersion = localStorage.getItem('appVersion');
-if (previousVersion && previousVersion !== APP_VERSION) {
-  // Only clear old bundled seed data when a prior app version is actually present.
-  // Do not wipe a user's first saved data just because appVersion was missing.
-  localStorage.removeItem('sessions');
-  localStorage.removeItem('stepLinks');
-}
-localStorage.setItem('appVersion', APP_VERSION);
-// Load persisted step changes
-loadPersistedSessions();
-// Auto-set Time2Track link (always)
-stepLinks[3] = 'https://app.time2track.com/activities';
-saveStepLinks();
-// Recompute status from steps for all sessions
-sessions.forEach(s => { s.status = deriveStatus(s.steps); });
-tryResumeAutoBackup();
-tryResumeDrive();
-try {
-  renderAll();
-} catch(e) {
-  console.error('renderAll failed:', e);
-  document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;padding:1rem;background:#e55;color:#fff;z-index:9999;font-family:sans-serif">App error — <button onclick="localStorage.clear();location.reload()" style="background:#fff;color:#e55;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-weight:700">Click here to reset</button></div>';
-}
-updateUndoBtn();
-
-// Keyboard shortcut: Ctrl+Z / Cmd+Z to undo
-document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-    e.preventDefault();
-    doUndo();
-  }
-});
-
-
 // ── Save dropdown closed via details element natively ──────────────────────
 function closeSaveDropdown() { const d=document.getElementById("save-details"); if(d) d.removeAttribute("open"); }
 
@@ -3421,6 +3384,44 @@ function updateSortArrows() {
   });
 }
 
+
+
+// ── INIT ──────────────────────────────────────────────────────────────
+// IMPORTANT: this init block must run after Renée constants/functions are defined.
+const APP_VERSION = 'v1782250187';
+// Only clear stale data when this is a genuinely new build (version stamp changed)
+const previousVersion = localStorage.getItem('appVersion');
+if (previousVersion && previousVersion !== APP_VERSION) {
+  // Only clear old bundled seed data when a prior app version is actually present.
+  // Do not wipe a user's first saved data just because appVersion was missing.
+  localStorage.removeItem('sessions');
+  localStorage.removeItem('stepLinks');
+}
+localStorage.setItem('appVersion', APP_VERSION);
+// Load persisted step changes
+loadPersistedSessions();
+// Auto-set Time2Track link (always)
+stepLinks[3] = 'https://app.time2track.com/activities';
+saveStepLinks();
+// Recompute status from steps for all sessions
+sessions.forEach(s => { s.status = deriveStatus(s.steps); });
+tryResumeAutoBackup();
+tryResumeDrive();
+try {
+  renderAll();
+} catch(e) {
+  console.error('renderAll failed:', e);
+  document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;padding:1rem;background:#e55;color:#fff;z-index:9999;font-family:sans-serif">App error — <button onclick="localStorage.clear();location.reload()" style="background:#fff;color:#e55;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-weight:700">Click here to reset</button></div>';
+}
+updateUndoBtn();
+
+// Keyboard shortcut: Ctrl+Z / Cmd+Z to undo
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    doUndo();
+  }
+});
 
 </script>
 

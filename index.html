@@ -1282,7 +1282,7 @@ async function onAutoBackupBtn() {
   }
   try {
     const handle = await window.showSaveFilePicker({
-      suggestedName: 'pickler-autobackup.json',
+      suggestedName: 'doc-tracker-autobackup.json',
       types: [{ description: 'JSON backup', accept: { 'application/json': ['.json'] } }]
     });
     autoBackupHandle = handle;
@@ -1329,6 +1329,7 @@ async function writeAutoBackupNow() {
       sessions: sessions,
       stepLinks: stepLinks,
       requirements: requirements,
+      pickleGame: (typeof pickleGame !== 'undefined' ? pickleGame : null),
     };
     const writable = await autoBackupHandle.createWritable();
     await writable.write(JSON.stringify(data, null, 2));
@@ -1436,7 +1437,7 @@ async function driveFindOrVerifyFile(token) {
 
 async function driveCreateFile(token, contentStr) {
   const boundary = 'doctracker' + Date.now();
-  const metadata = { name: 'pickler-autobackup.json', mimeType: 'application/json' };
+  const metadata = { name: 'doc-tracker-autobackup.json', mimeType: 'application/json' };
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: application/json\r\n\r\n${contentStr}\r\n` +
@@ -1476,6 +1477,7 @@ async function writeDriveBackupNow() {
       sessions: sessions,
       stepLinks: stepLinks,
       requirements: requirements,
+      pickleGame: (typeof pickleGame !== 'undefined' ? pickleGame : null),
     };
     const contentStr = JSON.stringify(data, null, 2);
     let fileId = await driveFindOrVerifyFile(token);
@@ -3001,7 +3003,9 @@ function submitAddSession() {
 const APP_VERSION = 'v1782250187';
 // Only clear stale data when this is a genuinely new build (version stamp changed)
 const previousVersion = localStorage.getItem('appVersion');
-if (previousVersion !== APP_VERSION) {
+if (previousVersion && previousVersion !== APP_VERSION) {
+  // Only clear old bundled seed data when a prior app version is actually present.
+  // Do not wipe a user's first saved data just because appVersion was missing.
   localStorage.removeItem('sessions');
   localStorage.removeItem('stepLinks');
 }

@@ -672,6 +672,29 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 #renee-roamer.renee-landing .renee-roamer-inner img { animation:reneeSquash .32s ease-out; }
 @keyframes reneeBob    { 0%,100%{transform:scale(1,1) translateY(0)} 50%{transform:scale(1.02,0.98) translateY(-2px)} }
 @keyframes reneeSquash { 0%{transform:scale(1.20,0.78)} 45%{transform:scale(0.95,1.06)} 75%{transform:scale(1.02,0.98)} 100%{transform:scale(1,1)} }
+/* ── Editable cells (session date / visit #) + clipped notes ─────────────────── */
+.cell-edit { cursor:pointer; border-radius:5px; padding:0.1rem 0.3rem; margin:-0.1rem -0.3rem; border-bottom:1px dashed transparent; }
+.cell-edit:hover { background:var(--surface-off2); border-bottom-color:var(--primary); }
+.cell-edit:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
+/* Fixed height + ellipsis: a long note can never change the row's size. */
+.note-cell { width:118px; max-width:118px; height:26px; line-height:24px; box-sizing:border-box;
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:0.76rem; color:var(--text);
+  background:var(--surface-off2); border:1px solid var(--divider); border-radius:7px; padding:0 0.45rem; cursor:pointer; }
+.note-cell:hover { border-color:var(--primary); }
+.note-cell:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
+.note-cell.note-empty { color:var(--muted); font-style:italic; background:none; border-style:dashed; }
+/* Anchored editor — absolutely positioned in PAGE coords, never position:fixed. */
+#cell-pop { position:absolute; z-index:2500; background:var(--surface); border:1px solid var(--divider); border-radius:11px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.24); padding:0.75rem; min-width:230px; }
+#cell-pop .cell-pop-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:0.45rem; }
+#cell-pop input, #cell-pop textarea { width:100%; box-sizing:border-box; padding:0.45rem 0.55rem; border:1px solid var(--divider);
+  border-radius:7px; background:var(--surface-off2); color:var(--text); font-size:0.88rem; font-family:inherit; }
+#cell-pop textarea { min-height:120px; resize:vertical; line-height:1.45; }
+#cell-pop .cell-pop-hint { font-size:0.68rem; color:var(--muted); margin-top:0.4rem; }
+#cell-pop .cell-pop-row { display:flex; gap:0.45rem; justify-content:flex-end; margin-top:0.6rem; }
+#cell-pop button { padding:0.35rem 0.8rem; border-radius:7px; font-size:0.8rem; font-weight:600; cursor:pointer;
+  font-family:inherit; border:1px solid var(--divider); background:none; color:var(--text); }
+#cell-pop button.cell-pop-save { background:var(--primary); color:#fff; border-color:var(--primary); }
 .renee-roam-toggle { margin-top:0.65rem; padding:0.35rem 0.7rem; font-size:0.78rem; font-weight:600; border:1px solid var(--divider); border-radius:8px; background:var(--surface-off2); color:var(--muted); cursor:pointer; font-family:inherit; }
 .renee-roam-toggle:hover { border-color:var(--primary); color:var(--text); }
 @media (prefers-reduced-motion: reduce) { #renee-roamer .renee-roamer-inner img { animation:none !important; } }
@@ -817,6 +840,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
   <th class="sortable-th" tabindex="0" onclick="setSort('date')" id="th-date">Date <span class="sort-arrow sort-arrow-active sort-desc"></span></th>
   <th>Status</th>
   <th class="sortable-th" tabindex="0" onclick="setSort('steps')" id="th-steps">Steps <span class="sort-arrow"></span></th>
+  <th>Notes</th>
   <th></th>
 </tr></thead>
           <tbody id="attention-tbody"></tbody>
@@ -845,7 +869,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
         </select>
       </div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Client</th><th>Visit</th><th>Appt Date</th><th>Status</th><th title="Place Holder Note">PH</th><th title="Disposition List">Disp</th><th title="Zoom">Zoom</th><th title="Time 2 Track">T2T</th><th title="Supervisor Log">S.Log</th><th title="Note in Review">Review</th><th title="Note to Epic">Epic</th><th></th></tr></thead>
+        <thead><tr><th>Client</th><th>Visit</th><th>Appt Date</th><th>Status</th><th title="Place Holder Note">PH</th><th title="Disposition List">Disp</th><th title="Zoom">Zoom</th><th title="Time 2 Track">T2T</th><th title="Supervisor Log">S.Log</th><th title="Note in Review">Review</th><th title="Note to Epic">Epic</th><th>Notes</th><th></th></tr></thead>
         <tbody id="all-tbody"></tbody>
       </table></div>
     </div>
@@ -1160,6 +1184,8 @@ function updateUndoBtn() {
     btn.title = 'Undo: restore client ' + top.client;
   } else if (top.type === 'req-change') {
     btn.title = 'Undo: report date change';
+  } else if (top.type === 'session-field') {
+    btn.title = 'Undo: ' + (CELL_LABELS[top.field] || 'session').toLowerCase() + ' change';
   } else {
     btn.title = 'Undo last step change';
   }
@@ -1258,6 +1284,15 @@ function applySnap(snap) {
       inverse = { type:'req-change', id: snap.id, prev: { lastDone: r.lastDone, nextDue: r.nextDue } };
       r.lastDone = snap.prev.lastDone; r.nextDue = snap.prev.nextDue;
       saveRequirements();
+    }
+  } else if (snap.type === 'session-field') {
+    // A single edited field (date / visit # / notes) on one session.
+    const s = sessions.find(x => x.id === snap.id);
+    if (s) {
+      inverse = { type:'session-field', id: snap.id, field: snap.field,
+                  prev: s[snap.field] === undefined ? '' : s[snap.field] };
+      s[snap.field] = snap.prev;
+      saveSessions();
     }
   } else {
     // Legacy step toggle snapshot: {id, steps}
@@ -2183,12 +2218,23 @@ function doDelete(id) {
 
 
 // ── RENDER ────────────────────────────────────────────────────────────
+// The clipped note box. Fixed height + ellipsis, so a long note can never grow
+// the row — clicking opens the editor, which is where the full text is readable.
+function noteCellHtml(s) {
+  const n = String(s.notes || '').trim();
+  const oneLine = n.replace(/\s+/g, ' ');
+  return `<div class="note-cell${n ? '' : ' note-empty'}" tabindex="0" role="button"
+    title="${n ? esc(n) : 'Add a note'}"
+    onclick="openCellEditor(${s.id},'notes',this)">${n ? esc(oneLine) : '+ note'}</div>`;
+}
+
 function sessionRow(s, showStepDots=true) {
   return `<tr data-id="${s.id}">
     <td><span class="client-code"${clientChipStyle(s.client)}>${esc(s.client)}</span></td>
-    <td style="white-space:nowrap">${esc(s.visit)}</td>
-    <td style="white-space:nowrap">${esc(fmtDate(s.appt))}</td>
+    <td style="white-space:nowrap"><span class="cell-edit" tabindex="0" role="button" title="Click to edit the visit number" onclick="openCellEditor(${s.id},'visit',this)">${esc(s.visit)}</span></td>
+    <td style="white-space:nowrap"><span class="cell-edit" tabindex="0" role="button" title="Click to edit the session date" onclick="openCellEditor(${s.id},'appt',this)">${esc(fmtDate(s.appt))}</span></td>
     ${showStepDots?`<td>${statusBadge(s.status, s.id)}</td><td><div class="steps">${stepsHtml(s.steps,s.id,true)}</div></td>`:''}
+    <td>${noteCellHtml(s)}</td>
     <td><button class="del-btn" onclick="doDelete(${s.id})" title="Delete session">✕</button></td>
   </tr>`;
 }
@@ -2220,7 +2266,7 @@ function renderDashboard() {
   const attnTbody = document.getElementById('attention-tbody');
   attnTbody.innerHTML = incomplete.length
     ? incomplete.map(s => sessionRow(s)).join('')
-    : '<tr><td colspan="6"><div class="empty"><div class="empty-icon">✅</div>No sessions match this filter.</div></td></tr>';
+    : '<tr><td colspan="7"><div class="empty"><div class="empty-icon">✅</div>No sessions match this filter.</div></td></tr>';
 }
 
 
@@ -2250,14 +2296,15 @@ function renderAllSessions() {
     ? filtered.map(s => {
         return `<tr data-id="${s.id}">
           <td><span class="client-code"${clientChipStyle(s.client)}>${esc(s.client)}</span></td>
-          <td>${esc(s.visit)}</td>
-          <td>${esc(fmtDate(s.appt))}</td>
+          <td><span class="cell-edit" tabindex="0" role="button" title="Click to edit the visit number" onclick="openCellEditor(${s.id},'visit',this)">${esc(s.visit)}</span></td>
+          <td><span class="cell-edit" tabindex="0" role="button" title="Click to edit the session date" onclick="openCellEditor(${s.id},'appt',this)">${esc(fmtDate(s.appt))}</span></td>
           <td>${statusBadge(s.status)}</td>
           ${s.steps.map((v,i)=>`<td style="padding:0.55rem 0.4rem"><span class="dot-wrap"><span class="dot ${v?'done':'pending'}" tabindex="0" role="button" aria-label="${STEP_NAMES[i]} — ${v ? 'done' : 'not done'}" onclick="toggleStepInline(${s.id},${i},this)"></span><span class="tip">${STEP_NAMES[i]}</span></span></td>`).join('')}
+          <td>${noteCellHtml(s)}</td>
           <td><button class="del-btn" onclick="doDelete(${s.id})" title="Delete">✕</button></td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="12"><div class="empty"><div class="empty-icon">🔍</div>No sessions match this filter.</div></td></tr>';
+    : '<tr><td colspan="13"><div class="empty"><div class="empty-icon">🔍</div>No sessions match this filter.</div></td></tr>';
 }
 
 function addOneYear(dateStr) {
@@ -2973,7 +3020,8 @@ function normalizeImportedData(data) {
         visit: String(s.visit == null ? '' : s.visit).slice(0, 60),
         appt: isDate(s.appt) ? String(s.appt) : '',
         status: '',
-        steps: steps
+        steps: steps,
+        notes: String(s.notes == null ? '' : s.notes).slice(0, 2000)
       };
     });
     // Repair missing or duplicate ids instead of importing colliding rows.
@@ -3642,6 +3690,106 @@ function renderRenee() {
   if (typeof updateRoamerFace === 'function') updateRoamerFace();
 }
 
+// ── Inline cell editor: session date, visit number, notes ────────────────────
+// Anchored popover in PAGE coords (position:absolute) — never a full-page fixed
+// layer, per this app's overlay rule. Every edit goes through pushUndo, so Ctrl+Z
+// covers it just like a step toggle.
+let cellEditCtx = null;
+const CELL_LABELS = { appt:'Session date', visit:'Visit number', notes:'Notes' };
+
+function closeCellEditor() {
+  const p = document.getElementById('cell-pop');
+  if (p) p.remove();
+  cellEditCtx = null;
+}
+
+function openCellEditor(id, field, anchor) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  closeCellEditor();
+
+  let control;
+  if (field === 'appt') {
+    control = '<input id="cell-pop-input" type="date" value="' + esc(s.appt || '') + '">';
+  } else if (field === 'visit') {
+    const n = parseInt(String(s.visit || '').replace(/\D+/g, ''), 10);
+    control = '<input id="cell-pop-input" type="number" min="1" step="1" value="' +
+              (Number.isFinite(n) ? n : '') + '" placeholder="e.g. 12">';
+  } else {
+    control = '<textarea id="cell-pop-input" placeholder="Anything worth remembering about this session…">' +
+              esc(s.notes || '') + '</textarea>';
+  }
+
+  const pop = document.createElement('div');
+  pop.id = 'cell-pop';
+  pop.innerHTML =
+    '<div class="cell-pop-title">' + CELL_LABELS[field] + ' · ' + esc(s.client) + ' ' + esc(s.visit) + '</div>' +
+    control +
+    (field === 'notes' ? '<div class="cell-pop-hint">Esc cancels · ⌘/Ctrl+Enter saves</div>' : '') +
+    '<div class="cell-pop-row">' +
+      '<button type="button" onclick="closeCellEditor()">Cancel</button>' +
+      '<button type="button" class="cell-pop-save" onclick="saveCellEditor()">Save</button>' +
+    '</div>';
+  document.body.appendChild(pop);
+
+  // Anchor under the cell in page coords, clamped so it can't hang off the edge.
+  const r  = anchor.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth || window.innerWidth || 1024;
+  pop.style.left = Math.max(8, Math.min(r.left + window.scrollX,
+                     window.scrollX + vw - pop.offsetWidth - 12)) + 'px';
+  pop.style.top  = (r.bottom + window.scrollY + 6) + 'px';
+
+  cellEditCtx = { id, field };
+  const inp = document.getElementById('cell-pop-input');
+  inp.focus();
+  if (inp.select) inp.select();
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCellEditor(); }
+    else if (e.key === 'Enter' && (field !== 'notes' || e.metaKey || e.ctrlKey)) { e.preventDefault(); saveCellEditor(); }
+  });
+}
+
+function saveCellEditor() {
+  if (!cellEditCtx) return;
+  const { id, field } = cellEditCtx;
+  const s   = sessions.find(x => x.id === id);
+  const inp = document.getElementById('cell-pop-input');
+  if (!s || !inp) { closeCellEditor(); return; }
+
+  let next;
+  if (field === 'appt') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inp.value)) {
+      showAlertModal('Pick a date', 'That date isn&#39;t valid — choose one from the picker.'); return;
+    }
+    next = inp.value;
+  } else if (field === 'visit') {
+    const n = parseInt(inp.value, 10);
+    if (!Number.isFinite(n) || n < 1) {
+      showAlertModal('Invalid visit number', 'Enter a whole number of 1 or higher.'); return;
+    }
+    next = 'Visit ' + n;
+  } else {
+    next = String(inp.value).slice(0, 2000);
+  }
+
+  const prev = s[field] === undefined ? '' : s[field];
+  if (next === prev) { closeCellEditor(); return; }   // nothing actually changed
+  pushUndo({ type:'session-field', id, field, prev });
+  s[field] = next;
+  saveSessions();
+  closeCellEditor();
+  renderAll();
+}
+
+// Dismiss on outside click / Escape from anywhere.
+document.addEventListener('mousedown', e => {
+  const p = document.getElementById('cell-pop');
+  if (p && !p.contains(e.target) && !e.target.closest('.cell-edit, .note-cell')) closeCellEditor();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('cell-pop')) { e.stopPropagation(); closeCellEditor(); }
+}, true);
+
 // ── Roaming Renée: a gentle, click-transparent sprite of the current pickle that
 //    hops around the screen every 15–30s. Toggleable + persisted. The layer is
 //    pointer-events:none so it NEVER blocks the tracker; only the pickle glyph is
@@ -3884,8 +4032,10 @@ if (safeGet('seedVersion') !== SEED_VERSION) {
 // Load persisted step changes
 loadPersistedSessions();
 recomputeNextId();
-// Auto-set Time2Track link (always)
+// Fixed institutional links — always set, since these URLs don't vary by user.
+// Index matches STEP_NAMES: 3 = Time 2 Track, 6 = Note to Epic.
 stepLinks[3] = 'https://app.time2track.com/activities';
+stepLinks[6] = 'https://remote.ochin.info/logon/LogonPoint/tmindex.html';
 saveStepLinks();
 // Recompute status from steps for all sessions
 sessions.forEach(s => { s.status = deriveStatus(s.steps); });

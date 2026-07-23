@@ -742,7 +742,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
           <hr>
           <button onclick="exportData();document.getElementById('save-details').removeAttribute('open')" title="Save a backup of your progress">⬇ Export</button>
           <button onclick="document.getElementById('import-file').click();document.getElementById('save-details').removeAttribute('open')" title="Restore from a backup file">⬆ Import</button>
-          <button id="restore-snapshot-btn" onclick="restorePreImportSnapshot();document.getElementById('save-details').removeAttribute('open')" title="Undo the last import" style="display:none">↩ Restore pre-import snapshot</button>
+          <button id="restore-snapshot-btn" onclick="restorePreImportSnapshot();document.getElementById('save-details').removeAttribute('open')" title="Undo the last import — brings back the data that import replaced" style="display:none">Undo last import (bring back replaced data)…</button>
           <button id="restore-safety-btn" onclick="openSafetyRestore();document.getElementById('save-details').removeAttribute('open')" title="Restore an automatic pre-delete snapshot" style="display:none">⏪ Restore snapshot…</button>
         </div>
       </details>
@@ -1828,6 +1828,16 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'hidden') return;
   if (autoBackupTimer) { clearTimeout(autoBackupTimer); autoBackupTimer = null; writeAutoBackupNow(); }
   if (driveBackupTimer) { clearTimeout(driveBackupTimer); driveBackupTimer = null; writeDriveBackupNow(); }
+});
+
+// Guard against the browser Back/Forward button showing a STALE view. Chrome's
+// bfcache can restore a frozen copy of this page — with the in-memory data from
+// before (e.g. before an import) — while localStorage already holds the current
+// data. That mismatch is dangerous: the next edit would saveSessions() the old
+// array back over the good data. On any bfcache restore, force a fresh load so
+// the screen always reflects what's actually saved.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) location.reload();
 });
 
 async function onDriveConnectBtn() {
@@ -3508,9 +3518,12 @@ function restorePreImportSnapshot() {
   let snap;
   try { snap = JSON.parse(raw); } catch (e) { showAlertModal('Restore failed', 'The saved snapshot is unreadable.'); return; }
   const when = snap.at ? new Date(snap.at).toLocaleString() : 'earlier';
-  showConfirmModal('Restore pre-import data?',
-    'This puts back the data from just before your last import (snapshot taken ' + esc(when) + '), replacing what\'s here now.',
-    'Restore', function () {
+  const snapN = (snap.data && Array.isArray(snap.data.sessions)) ? snap.data.sessions.length : '?';
+  showConfirmModal('Undo your last import?',
+    'This throws away the current <strong>' + sessions.length + ' sessions</strong> and brings back the <strong>' + snapN +
+    ' sessions</strong> you had before the last import (saved ' + esc(when) + ').<br><br>' +
+    'Only do this if that import was a mistake — otherwise press Cancel.',
+    'Bring back old data', function () {
       let clean;
       try { clean = normalizeImportedData(snap.data); }
       catch (e) { showAlertModal('Restore failed', 'The snapshot could not be validated.'); return; }

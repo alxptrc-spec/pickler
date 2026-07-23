@@ -600,6 +600,22 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 }
 #save-dropdown-menu button:hover { background:var(--surface-off2); }
 #save-dropdown-menu hr { margin:0; border:none; border-top:1px solid var(--divider); }
+/* Workflows dropdown (Clients page) — each row opens a document, with a pencil to edit its link */
+#workflows-menu {
+  display:none; position:absolute; right:0; top:calc(100% + 4px);
+  background:var(--surface); border:1px solid var(--divider);
+  border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.18);
+  z-index:2000; min-width:230px; overflow:hidden;
+}
+.save-dropdown-wrap[open] #workflows-menu { display:block; }
+#workflows-menu .wf-row { display:flex; align-items:stretch; border-bottom:1px solid var(--divider); }
+#workflows-menu .wf-row:last-child { border-bottom:none; }
+#workflows-menu .wf-open { flex:1; text-align:left; padding:0.6rem 0.9rem; border:none; background:none; cursor:pointer; font-size:0.85rem; color:var(--text); font-family:inherit; }
+#workflows-menu .wf-open:hover { background:var(--surface-off2); }
+#workflows-menu .wf-edit { width:40px; border:none; border-left:1px solid var(--divider); background:none; cursor:pointer; color:var(--muted); font-size:0.85rem; }
+#workflows-menu .wf-edit:hover { background:var(--surface-off2); color:var(--text); }
+#workflows-details > summary.btn { list-style:none; }
+#workflows-details > summary.btn::-webkit-details-marker { display:none; }
 
 
 /* ── Sortable column headers ──────────────────────────── */
@@ -895,8 +911,19 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
   <div class="view" id="view-requirements">
     <div class="card">
       <div class="section-header">
-        <div><div class="section-title">Client Reports</div><div class="section-sub">365 Reviews, Service Plans & Integrated Reports · manage each client from its ⋮ menu</div></div>
-        <button class="btn btn-primary" onclick="clientManagerNewClient()">+ New Client</button>
+        <div><div class="section-title">Client Reports</div><div class="section-sub">365 Reviews & Service Plans · manage each client from its ⋮ menu</div></div>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <details class="save-dropdown-wrap" id="workflows-details">
+            <summary class="btn btn-ghost" title="Open a workflow document">Workflows ▾</summary>
+            <div id="workflows-menu">
+              <div class="wf-row"><button class="wf-open" onclick="openWorkflow(0);closeWorkflowsDropdown()">365 Review</button><button class="wf-edit" onclick="editWorkflow(0)" title="Edit this link" aria-label="Edit 365 Review link">✎</button></div>
+              <div class="wf-row"><button class="wf-open" onclick="openWorkflow(1);closeWorkflowsDropdown()">Termination summary</button><button class="wf-edit" onclick="editWorkflow(1)" title="Edit this link" aria-label="Edit Termination summary link">✎</button></div>
+              <div class="wf-row"><button class="wf-open" onclick="openWorkflow(2);closeWorkflowsDropdown()">Transfer summary</button><button class="wf-edit" onclick="editWorkflow(2)" title="Edit this link" aria-label="Edit Transfer summary link">✎</button></div>
+              <div class="wf-row"><button class="wf-open" onclick="openWorkflow(3);closeWorkflowsDropdown()">Service plan</button><button class="wf-edit" onclick="editWorkflow(3)" title="Edit this link" aria-label="Edit Service plan link">✎</button></div>
+            </div>
+          </details>
+          <button class="btn btn-primary" onclick="clientManagerNewClient()">+ New Client</button>
+        </div>
       </div>
       <div id="req-grid" style="margin-top:0.5rem"></div>
     </div>
@@ -1169,6 +1196,52 @@ function sanitizeUrl(raw) {
     const u = new URL(s);
     return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
   } catch (e) { return ''; }
+}
+
+// ── Workflows dropdown (Clients page) ─────────────────────────────────────────
+// Fixed labels, default document links, and per-link overrides the user can edit
+// (persisted + carried in backups). workflowUrl(i) returns the override if set,
+// otherwise the shipped default.
+const WORKFLOWS = [
+  { label: '365 Review',          url: 'https://pacificu.app.box.com/file/1042345639262?s=avzjbj4hgi1ttf7exi4tauxrcd8go0at' },
+  { label: 'Termination summary', url: 'https://pacificu.app.box.com/file/991922235293?s=jb6gs1bib3xfa2d61totfcgss7of3f2y' },
+  { label: 'Transfer summary',    url: 'https://pacificu.app.box.com/file/1086929849335?s=zgrajkaoo19idynzswk7kgxx4x2htmhb' },
+  { label: 'Service plan',        url: 'https://pacificu.app.box.com/file/2005803249241?s=gjt71fdrg94kj0d2jfhhik69po3354zy' },
+];
+let workflowLinks = [];   // index-aligned overrides; '' / missing → use the default
+
+function loadWorkflowLinks() {
+  try { const v = JSON.parse(safeGet('workflowLinks') || 'null'); workflowLinks = Array.isArray(v) ? v : []; }
+  catch (e) { workflowLinks = []; }
+}
+function saveWorkflowLinks() { safeSet('workflowLinks', JSON.stringify(workflowLinks)); queueAutoBackup(); }
+function workflowUrl(i) {
+  const over = workflowLinks[i];
+  return (typeof over === 'string' && over) ? over : (WORKFLOWS[i] ? WORKFLOWS[i].url : '');
+}
+function closeWorkflowsDropdown() { const d = document.getElementById('workflows-details'); if (d) d.removeAttribute('open'); }
+
+function openWorkflow(i) {
+  const u = sanitizeUrl(workflowUrl(i));
+  if (u) window.open(u, '_blank', 'noopener,noreferrer');
+  else showAlertModal('No link set', 'This workflow has no valid link yet — use the ✎ button to add one.');
+}
+
+function editWorkflow(i) {
+  const w = WORKFLOWS[i];
+  if (!w) return;
+  closeWorkflowsDropdown();
+  showPromptModal('Edit link · ' + w.label, 'Document URL:', workflowUrl(i), raw => {
+    const trimmed = (raw || '').trim();
+    if (trimmed && !sanitizeUrl(trimmed)) {
+      showAlertModal('Invalid link', 'Enter a valid web address (http:// or https://).');
+      return;
+    }
+    // Empty input clears the override, reverting to the shipped default.
+    workflowLinks[i] = trimmed ? sanitizeUrl(trimmed) : '';
+    saveWorkflowLinks();
+    showAlertModal('Link updated', esc(w.label) + ' now opens:<br><br>' + esc(workflowUrl(i)));
+  }, 'Save');
 }
 
 // ── Undo / Redo stacks ─────────────────────────────────────────────────────────
@@ -1920,19 +1993,14 @@ function allocSessionId() {
 // For 365 Review, nextDue auto-calculates as lastDone + 1 year
 let requirements = [
   {id:'r1', client:'PCH-B2', type:'365 Review', lastDone:'', nextDue:''},
-  {id:'r2', client:'PCH-B2', type:'Integrated Report', lastDone:'', nextDue:''},
   {id:'r3', client:'PCH-B2', type:'Service Plan', lastDone:'', nextDue:''},
   {id:'r4', client:'PCH-C4', type:'365 Review', lastDone:'', nextDue:''},
-  {id:'r5', client:'PCH-C4', type:'Integrated Report', lastDone:'', nextDue:''},
   {id:'r6', client:'PCH-C4', type:'Service Plan', lastDone:'', nextDue:''},
   {id:'r7', client:'PCH-R1', type:'365 Review', lastDone:'', nextDue:''},
-  {id:'r8', client:'PCH-R1', type:'Integrated Report', lastDone:'', nextDue:''},
   {id:'r9', client:'PCH-R1', type:'Service Plan', lastDone:'', nextDue:''},
   {id:'r10', client:'PCH-W3', type:'365 Review', lastDone:'', nextDue:''},
-  {id:'r11', client:'PCH-W3', type:'Integrated Report', lastDone:'', nextDue:''},
   {id:'r12', client:'PCH-W3', type:'Service Plan', lastDone:'', nextDue:''},
   {id:'r13', client:'PCH4', type:'365 Review', lastDone:'', nextDue:''},
-  {id:'r14', client:'PCH4', type:'Integrated Report', lastDone:'', nextDue:''},
   {id:'r15', client:'PCH4', type:'Service Plan', lastDone:'', nextDue:''},
 ];
 
@@ -1992,8 +2060,20 @@ function pendingSessions() {
   return sessions.filter(s => s.status !== 'COMPLETE' && !isArchived(s.client));
 }
 
+// Tracked report types on the Clients page. Integrated Report was removed
+// 2026-07-23 per Alex; migrateReportTypes() prunes any lingering rows.
+const REPORT_TYPES = ['365 Review', 'Service Plan'];
+
+// One-time cleanup of retired report rows (e.g. Integrated Report) from saved
+// data + backups. Runs at init; no-op once there are none left.
+function migrateReportTypes() {
+  const before = requirements.length;
+  requirements = requirements.filter(r => REPORT_TYPES.includes(r.type));
+  if (requirements.length !== before) saveRequirements();
+}
+
 function ensureReportRowsForClient(client) {
-  const DOC_TYPES = ['365 Review', 'Integrated Report', 'Service Plan'];
+  const DOC_TYPES = REPORT_TYPES;
   DOC_TYPES.forEach(type => {
     if (!requirements.find(r => r.client === client && r.type === type)) {
       requirements.push({ id: 'r' + Date.now() + '-' + Math.random().toString(36).slice(2,6), client, type, lastDone:'', nextDue:'' });
@@ -2578,7 +2658,7 @@ function updateReqField(id, field, value) {
 function renderRequirements() {
   // Active clients only — archived clients move to the Archived section below.
   const clients = allClientCodes(false).filter(c => requirements.some(r => r.client === c)).sort();
-  const DOC_TYPES = ['365 Review', 'Integrated Report', 'Service Plan'];
+  const DOC_TYPES = REPORT_TYPES;
 
   document.getElementById('req-grid').innerHTML = clients.map(client => {
     const clientReqs = DOC_TYPES.map(type => requirements.find(r => r.client === client && r.type === type)).filter(Boolean);
@@ -3280,6 +3360,7 @@ function backupData() {
     nextId: (typeof nextId !== 'undefined' ? nextId : 1),
     reneeRoam: safeGet('reneeRoam'),
     themeMode: safeGet('themeMode'),
+    workflowLinks: (typeof workflowLinks !== 'undefined' ? workflowLinks : []),
   };
 }
 
@@ -3398,6 +3479,9 @@ function normalizeImportedData(data) {
   if (Number.isFinite(nid) && nid > 0) out.nextId = Math.floor(nid);
   if (data.reneeRoam === '0' || data.reneeRoam === '1') out.reneeRoam = data.reneeRoam;
   if (data.themeMode === 'light' || data.themeMode === 'dark') out.themeMode = data.themeMode;
+  if (Array.isArray(data.workflowLinks)) {
+    out.workflowLinks = WORKFLOWS.map((_, i) => sanitizeUrl(data.workflowLinks[i]));   // untrusted → sanitise each
+  }
   return out;
 }
 
@@ -3449,6 +3533,7 @@ function applyImport(clean, fileName, snapshotSaved) {
   if (clean.nextId) { nextId = Math.max(nextId, clean.nextId); safeSet('nextId', String(nextId)); }
   if (clean.reneeRoam) setReneeRoam(clean.reneeRoam === '1');
   if (clean.themeMode) setThemeMode(clean.themeMode);
+  if (clean.workflowLinks) { workflowLinks = clean.workflowLinks; saveWorkflowLinks(); }
   if (!pickleUnlocked.includes(STARTER_FORM)) pickleUnlocked.unshift(STARTER_FORM);
   if (!pickleUnlocked.includes(pickleCurrent)) pickleCurrent = STARTER_FORM;
   baselineRewardedSessions();
@@ -4620,7 +4705,9 @@ saveStepLinks();
 sessions.forEach(s => { s.status = deriveStatus(s.steps); });
 tryResumeAutoBackup();
 loadPersistedRequirements();
+migrateReportTypes();      // drop retired report rows (Integrated Report) from saved data
 loadClientMeta();
+loadWorkflowLinks();
 tryResumeDrive();
 populateStepFilters();
 // Renée pickle system: load saved state, then baseline every already-complete
@@ -4705,12 +4792,16 @@ document.addEventListener('keydown', e => {
   if (addCard && addCard.style.display !== 'none') { closeAddForm(); return; }
   const dd = document.getElementById('save-details');
   if (dd && dd.hasAttribute('open')) dd.removeAttribute('open');
+  const wf = document.getElementById('workflows-details');
+  if (wf && wf.hasAttribute('open')) wf.removeAttribute('open');
 });
 
 // Close the Save menu and any open client ⋮ menus when clicking outside them.
 document.addEventListener('click', e => {
   const dd = document.getElementById('save-details');
   if (dd && dd.hasAttribute('open') && !dd.contains(e.target)) dd.removeAttribute('open');
+  const wf = document.getElementById('workflows-details');
+  if (wf && wf.hasAttribute('open') && !wf.contains(e.target)) wf.removeAttribute('open');
   document.querySelectorAll('details.client-menu[open]').forEach(d => {
     if (!d.contains(e.target)) d.removeAttribute('open');
   });

@@ -616,6 +616,22 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 #workflows-menu .wf-edit:hover { background:var(--surface-off2); color:var(--text); }
 #workflows-details > summary.btn { list-style:none; }
 #workflows-details > summary.btn::-webkit-details-marker { display:none; }
+/* Workflows TAB — offline collapsible outline of the workflow reference docs */
+.wf-tree { margin-top:0.4rem; }
+.wf-branch { margin:0.1rem 0; }
+.wf-branch > .wf-children { border-left:2px solid var(--divider); margin-left:0.55rem; padding-left:0.6rem; }
+.wf-branch > summary { list-style:none; cursor:pointer; font-weight:600; padding:0.4rem 0.4rem; border-radius:7px; color:var(--text); font-size:0.92rem; display:flex; align-items:center; gap:0.4rem; }
+.wf-branch > summary::-webkit-details-marker { display:none; }
+.wf-branch > summary::before { content:'▸'; color:var(--muted); transition:transform .15s ease; }
+.wf-branch[open] > summary::before { transform:rotate(90deg); }
+.wf-branch > summary:hover { background:var(--surface-off2); }
+.wf-link { display:block; padding:0.34rem 0.55rem; margin:0.08rem 0; border-radius:7px; color:var(--primary); text-decoration:none; font-size:0.87rem; }
+.wf-link:hover { background:var(--surface-off2); text-decoration:underline; }
+.wf-link .wf-ext { font-size:0.7rem; opacity:0.55; }
+.wf-leaf { padding:0.34rem 0.55rem; color:var(--muted); font-size:0.87rem; }
+.wf-expand-row { display:flex; gap:0.5rem; margin:0.2rem 0 0.6rem; }
+.wf-expand-row button { font-size:0.76rem; padding:0.28rem 0.65rem; border:1px solid var(--divider); border-radius:7px; background:var(--surface-off2); color:var(--muted); cursor:pointer; font-family:inherit; }
+.wf-expand-row button:hover { border-color:var(--primary); color:var(--text); }
 
 
 /* ── Sortable column headers ──────────────────────────── */
@@ -741,8 +757,9 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
       <button class="nav-tab active" onclick="switchView('dashboard')">⌂ Home</button>
       <button class="nav-tab" onclick="switchView('sessions')">☷ All Sessions</button>
       <button class="nav-tab" onclick="switchView('requirements')">Clients</button>
+      <button class="nav-tab" onclick="switchView('workflows')" title="Workflow reference documents">Workflows</button>
       <button class="nav-tab" onclick="switchView('coach')">✦ Coach</button>
-      <button class="nav-tab" onclick="switchView('renee')" title="Renée's pickle collection">🥒 Renée</button>
+      <button class="nav-tab" onclick="switchView('renee')" title="Renée's pickle collection">Renée</button>
       <button class="nav-tab" onclick="switchView('help')" title="How backups & Google Drive work">Help</button>
     </div>
     <div class="nav-util-tabs">
@@ -1021,6 +1038,9 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
       </details>
     </div>
   </div>
+
+  <!-- WORKFLOWS (filled by renderWorkflows) -->
+  <div class="view" id="view-workflows"></div>
 
   <!-- RENÉE PICKLE COLLECTION (filled by renderRenee) -->
   <div class="view" id="view-renee"></div>
@@ -2911,6 +2931,7 @@ function renderAll() {
   else if (id === 'view-requirements') renderRequirements();
   else if (id === 'view-coach') renderCoach();
   else if (id === 'view-renee') renderRenee();
+  else if (id === 'view-workflows') renderWorkflows();
   annotateHeadings();
 }
 
@@ -3828,7 +3849,7 @@ function switchView(name) {
   if (name !== 'coach') clearCoachTimer();   // leaving Coach abandons its timers
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-  const names = ['dashboard','sessions','requirements','coach','renee','help'];
+  const names = ['dashboard','sessions','requirements','workflows','coach','renee','help'];
   document.querySelectorAll('.nav-main-tabs .nav-tab').forEach((t, i) => {
     const active = names[i] === name;
     t.classList.toggle('active', active);
@@ -4675,6 +4696,143 @@ function setReneeRoam(on) {
   safeSet('reneeRoam', on ? '1' : '0');
   if (on) startReneeRoam(); else stopReneeRoam();
   renderRenee(); // refresh the toggle label
+}
+
+const WORKFLOW_TREE = [
+  {label:"Termination & Transfer", children:[
+    {label:"Termination", children:[
+      {label:"Closing the Patient File (Quick Guide)", url:"https://pacificu.app.box.com/file/2362247267303"},
+      {label:"Checklist for Closing Paper Charts", url:"https://pacificu.app.box.com/file/2362248883090"},
+      {label:"Termination Summary Workflow", url:"https://pacificu.app.box.com/file/991922235293"},
+      {label:"Terminating a Client (Quick Guide)", url:"https://pacificu.app.box.com/file/1003715344069"},
+      {label:"Closing Letter Template (Spanish)", url:"https://pacificu.app.box.com/file/1646249546384"},
+      {label:"Closing Letter Template", url:"https://pacificu.app.box.com/file/1019034158794"}
+    ]},
+    {label:"Transfer", children:[
+      {label:"Transfer Summary workflow", url:"https://pacificu.app.box.com/file/1086929849335"},
+      {label:"PCH Warm Hand offs", url:"https://pacificu.app.box.com/file/1255661844444"},
+      {label:"PCH Transition Packet", url:"https://pacificu.app.box.com/file/1255659577133"},
+      {label:"Client transfers", url:"https://pacificu.app.box.com/file/1000779313087"}
+    ]},
+    {label:"Other", children:[
+      {label:"5.20.25 didactic", url:"https://pacificu.app.box.com/file/1863618637928"},
+      {label:"Closing Letter to Non-Responsive Client", url:"https://pacificu.app.box.com/file/991920811515"},
+      {label:"De-identify Intake Assessment Report", url:"https://pacificu.app.box.com/file/1517772303699"}
+    ]}
+  ]},
+  {label:"Scheduling Appointments", children:[
+    {label:"All about Appointments 2026", url:"https://pacificu.app.box.com/file/1643372728735"},
+    {label:"Appointment visit types 01.2026", url:"https://pacificu.app.box.com/file/2117032537961"},
+    {label:"Finding an open room \u2014 View Schedule", url:"https://pacificu.app.box.com/file/1970050454049"},
+    {label:"Finding an open room \u2014 Snapboard", url:"https://pacificu.app.box.com/file/1960464823024"}
+  ]},
+  {label:"Therapy Sessions", children:[
+    {label:"Documentation", children:[
+      {label:"DAP Note Example", url:"https://pacificu.app.box.com/file/2142099662127"},
+      {label:"MH-COA Document Standards Checklist", url:"https://pacificu.app.box.com/file/1850831591772"},
+      {label:"SOAP & DAP templates for Epic", url:"https://pacificu.app.box.com/file/1275375951608"},
+      {label:"Documentation training \u2014 SOAP & DAP", url:"https://pacificu.app.box.com/file/1255228590182"}
+    ]},
+    {label:"Other", children:[
+      {label:"Uploading Intake Reports & addendums", url:"https://pacificu.app.box.com/file/2064347953819"},
+      {label:"Therapy Encounters: TELEHEALTH", url:"https://pacificu.app.box.com/file/983730158762"},
+      {label:"Therapy Encounters: IN-PERSON", url:"https://pacificu.app.box.com/file/983730162261"},
+      {label:"Individual Therapy Visit Guide", url:"https://pacificu.app.box.com/file/1188973606085"},
+      {label:"Telehealth Workflow \u2014 Intakes & Phone Screens", url:"https://pacificu.app.box.com/file/1270572947436"}
+    ]}
+  ]},
+  {label:"Intake & 365 Review", children:[
+    {label:"Templates", children:[
+      {label:"Intake \u2014 Adult (Span)", url:"https://pacificu.app.box.com/file/1249330053890"},
+      {label:"Intake \u2014 Child", url:"https://pacificu.app.box.com/file/1943220285159"},
+      {label:"Intake \u2014 Adult (Slaughter)", url:"https://pacificu.app.box.com/file/2262387610893"},
+      {label:"Intake \u2014 Child (MacNab)", url:"https://pacificu.app.box.com/file/2262403900432"},
+      {label:"Intake \u2014 Adult", url:"https://pacificu.app.box.com/file/1343207087080"},
+      {label:"Intake \u2014 Family", url:"https://pacificu.app.box.com/file/1790587933202"},
+      {label:"Mock Child Intake Interview", url:"https://pacificu.app.box.com/file/1655495682599"},
+      {label:"Mock Adult Intake Interview", url:"https://pacificu.app.box.com/file/1655495677799"},
+      {label:"Intake \u2014 Child (Span)", url:"https://pacificu.app.box.com/file/1307477435151"}
+    ]},
+    {label:"Phone Screens", children:[
+      {label:"PCH Front Desk Phone Screen", url:"https://pacificu.app.box.com/file/2260716630236"},
+      {label:"PCH Phone Screen Therapy \u2014 Adult", url:"https://pacificu.app.box.com/file/1433779938647"},
+      {label:"PCH Spanish Phone Screen Adult", url:"https://pacificu.app.box.com/file/1655481772168"},
+      {label:"PCH Spanish Phone Screen Child", url:"https://pacificu.app.box.com/file/1669801587803"},
+      {label:"PCH Phone Screen Therapy \u2014 Child", url:"https://pacificu.app.box.com/file/1212821795608"}
+    ]},
+    {label:"ROADS (MOTS)", children:[
+      {label:"ROADS Spanish 04.2026", url:"https://pacificu.app.box.com/file/2219047263630"},
+      {label:"ROADS PDF 04.2026", url:"https://pacificu.app.box.com/file/2216157176936"}
+    ]},
+    {label:"Other", children:[
+      {label:"1. Chart Review Before Phone Screen", url:"https://pacificu.app.box.com/file/1959509087820"},
+      {label:"2. Initial Phone Screen Documentation", url:"https://pacificu.app.box.com/file/1192949962398"},
+      {label:"3. Intake Interview Session Process", url:"https://pacificu.app.box.com/file/1191025468809"},
+      {label:"4. Entering Intake Questions & ROADS", url:"https://pacificu.app.box.com/file/1185250476347"},
+      {label:"5. Intake Testing Session Process", url:"https://pacificu.app.box.com/file/985978506018"},
+      {label:"6. Intake Feedback Session Process", url:"https://pacificu.app.box.com/file/986031823853"},
+      {label:"7. Uploading Integrated Report", url:"https://pacificu.app.box.com/file/1184286101292"},
+      {label:"Annual 365 Review", url:"https://pacificu.app.box.com/file/1042345639262"},
+      {label:"PCH Front Desk Phone Screen (dup)", url:"https://pacificu.app.box.com/file/2260729144271"},
+      {label:"Uploading Intake Reports & addendums (dup)", url:"https://pacificu.app.box.com/file/2064348088225"}
+    ]}
+  ]},
+  {label:"ROI", children:[
+    {label:"Blank Release of Records", url:"https://pacificu.app.box.com/file/1275427537574"},
+    {label:"ROI Decision tree", url:"https://pacificu.app.box.com/file/1200198701297"}
+  ]},
+  {label:"Service Plan", children:[
+    {label:"Update Existing (post-Sept 2025)", url:"https://pacificu.app.box.com/file/2005803249241"},
+    {label:"Create New (post-Sept 2025)", url:"https://pacificu.app.box.com/file/2001284000880"}
+  ]},
+  {label:"MyChart", children:[
+    {label:"Send In Basket without MyChart \u2014 encrypted email", url:"https://pacificu.app.box.com/file/1965100612346"},
+    {label:"Happy Together in MyChart", url:"https://pacificu.app.box.com/file/1962968588653"},
+    {label:"How to send Patient Questionnaires", url:"https://pacificu.app.box.com/file/1673601162013"},
+    {label:"Send OQ-45 via MyChart Message", url:"https://pacificu.app.box.com/file/1476914207649"},
+    {label:"Questionnaires Available to send", url:"https://pacificu.app.box.com/file/1464961658109"},
+    {label:"Quickly File Patient Questionnaires", url:"https://pacificu.app.box.com/file/1464943170191"},
+    {label:"How patients can send Attachments", url:"https://pacificu.app.box.com/file/1461801495911"},
+    {label:"Push questionnaire responses to chart", url:"https://pacificu.app.box.com/file/1458534810031"},
+    {label:"Sending messages via MyChart portal", url:"https://pacificu.app.box.com/file/1033563879013"}
+  ]}
+];
+
+
+// ── Workflows tab: offline collapsible outline of the Epic-workflow reference
+//    docs (parsed from the user's markmap). Every leaf opens a Box document in a
+//    new tab; links go through sanitizeUrl + noopener. No external libraries, so
+//    it renders offline (the Box links themselves still need internet to open). ──
+function renderWorkflows() {
+  const view = document.getElementById('view-workflows');
+  if (!view) return;
+  const render = (nodes, depth) => nodes.map(n => {
+    if (n.children && n.children.length) {
+      return '<details class="wf-branch"' + (depth === 0 ? ' open' : '') + '>' +
+        '<summary>' + esc(n.label) + '</summary>' +
+        '<div class="wf-children">' + render(n.children, depth + 1) + '</div>' +
+        '</details>';
+    }
+    const url = sanitizeUrl(n.url);
+    if (url) return '<a class="wf-link" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+      esc(n.label) + ' <span class="wf-ext">\u2197</span></a>';
+    return '<div class="wf-leaf">' + esc(n.label) + '</div>';
+  }).join('');
+  view.innerHTML =
+    '<div class="card">' +
+      '<div class="section-header"><div>' +
+        '<div class="section-title">Epic Workflows</div>' +
+        '<div class="section-sub">Reference documents for clinical workflows \u00b7 each opens in Box (needs internet)</div>' +
+      '</div></div>' +
+      '<div class="wf-expand-row">' +
+        '<button onclick="wfToggleAll(true)">Expand all</button>' +
+        '<button onclick="wfToggleAll(false)">Collapse all</button>' +
+      '</div>' +
+      '<div class="wf-tree">' + render(WORKFLOW_TREE, 0) + '</div>' +
+    '</div>';
+}
+function wfToggleAll(open) {
+  document.querySelectorAll('#view-workflows .wf-branch').forEach(d => { if (open) d.setAttribute('open',''); else d.removeAttribute('open'); });
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────

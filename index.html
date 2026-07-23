@@ -12,7 +12,7 @@
 :root,[data-theme="light"]{
   --bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;--surface-off:#f3f0ec;--surface-off2:#edeae5;
   --divider:#dcd9d5;--border:#d4d1ca;
-  --text:#28251d;--muted:#7a7974;--faint:#bab9b4;
+  --text:#28251d;--muted:#696863;--faint:#bab9b4;   /* muted ≥4.5:1 on the light bg (was #7a7974 at 4.11:1) */
   --primary:#01696f;--primary-h:#0c4e54;--primary-hl:#cedcd8;
   --warning:#964219;--warning-hl:#ddcfc6;
   --error:#a12c7b;--error-hl:#e0ced7;
@@ -28,7 +28,7 @@
 [data-theme="dark"]{
   --bg:#171614;--surface:#1c1b19;--surface-2:#201f1d;--surface-off:#1d1c1a;--surface-off2:#22211f;
   --divider:#262523;--border:#393836;
-  --text:#cdccca;--muted:#797876;--faint:#5a5957;
+  --text:#cdccca;--muted:#8c8b88;--faint:#5a5957;   /* muted ≥4.5:1 on the dark bg (was #797876 at 3.90:1) */
   --primary:#4f98a3;--primary-h:#227f8b;--primary-hl:#313b3b;
   --warning:#bb653b;--warning-hl:#564942;
   --error:#d163a7;--error-hl:#4c3d46;
@@ -171,6 +171,7 @@ select.filter-sel{padding:0.4rem 0.6rem;border:1px solid var(--border);border-ra
   border:4px solid transparent;border-top-color:var(--text);
 }
 .dot-wrap:hover .tip{opacity:1}
+.dot-wrap:focus-within .tip{opacity:1}   /* keyboard users get the step name too */
 
 /* Overdue highlight */
 tr.overdue-row td:first-child{border-left:3px solid var(--error)}
@@ -697,6 +698,11 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 #cell-pop button.cell-pop-save { background:var(--primary); color:#fff; border-color:var(--primary); }
 .renee-roam-toggle { margin-top:0.65rem; padding:0.35rem 0.7rem; font-size:0.78rem; font-weight:600; border:1px solid var(--divider); border-radius:8px; background:var(--surface-off2); color:var(--muted); cursor:pointer; font-family:inherit; }
 .renee-roam-toggle:hover { border-color:var(--primary); color:var(--text); }
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece, .coach-celebrate-confetti, .coach-celebrate-emoji { display:none !important; }
+  .row-flash-anim, .dot { animation: none !important; }
+  * { scroll-behavior: auto !important; }
+}
 @media (prefers-reduced-motion: reduce) { #renee-roamer .renee-roamer-inner img { animation:none !important; } }
 
 </style>
@@ -707,7 +713,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 
 <!-- TOP BAR -->
 <header class="topbar">
-  <div class="logo">
+  <div class="logo" role="heading" aria-level="1">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-label="Clinical Doc Tracker">
       <rect x="3" y="3" width="18" height="18" rx="3"/>
       <path d="M9 3v18M15 9h-3M15 13h-3M9 9h.01M9 13h.01M9 17h.01"/>
@@ -736,6 +742,8 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
           <hr>
           <button onclick="exportData();document.getElementById('save-details').removeAttribute('open')" title="Save a backup of your progress">⬇ Export</button>
           <button onclick="document.getElementById('import-file').click();document.getElementById('save-details').removeAttribute('open')" title="Restore from a backup file">⬆ Import</button>
+          <button id="restore-snapshot-btn" onclick="restorePreImportSnapshot();document.getElementById('save-details').removeAttribute('open')" title="Undo the last import" style="display:none">↩ Restore pre-import snapshot</button>
+          <button id="restore-safety-btn" onclick="openSafetyRestore();document.getElementById('save-details').removeAttribute('open')" title="Restore an automatic pre-delete snapshot" style="display:none">⏪ Restore snapshot…</button>
         </div>
       </details>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
@@ -753,7 +761,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
   <div id="confirm-bar" style="display:none">
     <div id="confirm-title" style="font-weight:700;font-size:1rem;margin-bottom:0.35rem"></div>
     <div id="confirm-body" style="font-size:0.9rem;color:var(--muted);line-height:1.5;margin-bottom:0.75rem"></div>
-    <input id="confirm-input" type="text" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;padding:0.55rem 0.7rem;border:1px solid var(--divider);border-radius:8px;background:var(--surface-off2);color:var(--text);font-size:0.9rem;margin-bottom:0.75rem">
+    <input id="confirm-input" type="text" aria-label="Value" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;padding:0.55rem 0.7rem;border:1px solid var(--divider);border-radius:8px;background:var(--surface-off2);color:var(--text);font-size:0.9rem;margin-bottom:0.75rem">
     <div style="display:flex;gap:0.6rem;justify-content:flex-end">
       <button id="confirm-cancel-btn" onclick="closeConfirmModal()" style="padding:0.5rem 1rem;border:1px solid var(--divider);border-radius:8px;background:none;cursor:pointer;font-size:0.875rem;color:var(--text)">Cancel</button>
       <button id="confirm-ok-btn" style="padding:0.5rem 1.1rem;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600;font-size:0.875rem">Confirm</button>
@@ -766,6 +774,14 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
     <span style="flex:1;font-size:0.875rem;color:var(--text)">Google&nbsp;Drive backups have stopped — your Drive session may have expired. Your data is still saved on this device, but it's no longer being copied off-device. Reconnect Drive, or use ⬇ Save → Export to keep a backup.</span>
     <button onclick="onDriveConnectBtn()" style="padding:0.45rem 0.9rem;border:none;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-weight:600;font-size:0.83rem;white-space:nowrap">Reconnect</button>
     <button onclick="dismissBackupWarning()" style="padding:0.45rem 0.75rem;border:1px solid var(--divider);border-radius:8px;background:none;color:var(--muted);cursor:pointer;font-size:0.83rem">Dismiss</button>
+  </div>
+
+  <!-- In-flow backup-failure warning (auto-backup FILE write failed) -->
+  <div id="autobackup-warning-bar" style="display:none;border:2px solid var(--error);background:var(--surface);border-radius:var(--r-xl);padding:0.85rem 1.1rem;margin-bottom:1rem;box-shadow:var(--shadow-sm);align-items:center;gap:0.75rem">
+    <span style="font-size:1.15rem">⚠️</span>
+    <span style="flex:1;font-size:0.875rem;color:var(--text)">Auto-Backup couldn't save to your file — the drive may be disconnected, out of space, or the file was moved. Your data is still on this device, but it's <strong>not</strong> being copied to the file. Pick the file again, or use ⬇ Save → Export.</span>
+    <button onclick="onAutoBackupBtn()" style="padding:0.45rem 0.9rem;border:none;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-weight:600;font-size:0.83rem;white-space:nowrap">Fix file</button>
+    <button onclick="dismissAutoBackupWarning()" style="padding:0.45rem 0.75rem;border:1px solid var(--divider);border-radius:8px;background:none;color:var(--muted);cursor:pointer;font-size:0.83rem">Dismiss</button>
   </div>
 
   <!-- In-flow reward banner — shown only after a client session is completed -->
@@ -792,10 +808,10 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
         <div class="section-header" style="flex-wrap:wrap;gap:0.5rem">
           <div><div class="section-title">📋 Sessions In Progress</div><div class="section-sub">Click any dot to complete a step · Row disappears when all 7 are green</div></div>
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
-            <select class="form-input" id="dash-filter-client" onchange="renderDashboard()" style="width:auto;padding:0.35rem 0.6rem;font-size:0.82rem">
+            <select class="form-input" id="dash-filter-client" aria-label="Filter by client" onchange="renderDashboard()" style="width:auto;padding:0.35rem 0.6rem;font-size:0.82rem">
               <option value="">All Clients</option>
             </select>
-            <select class="form-input" id="dash-filter-step" onchange="renderDashboard()" style="width:auto;padding:0.35rem 0.6rem;font-size:0.82rem">
+            <select class="form-input" id="dash-filter-step" aria-label="Filter by next step" onchange="renderDashboard()" style="width:auto;padding:0.35rem 0.6rem;font-size:0.82rem">
               <!-- options generated from NEXT_ACTION at init -->
               <option value="">All Next Steps</option>
             </select>
@@ -816,7 +832,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
                 <option value="PCH4">PCH4</option>
                 <option value="__new__">+ Add new client…</option>
               </select>
-              <input class="form-input" id="f-client-new" placeholder="Enter new client code" autocomplete="off"
+              <input class="form-input" id="f-client-new" placeholder="Enter new client code" autocomplete="off" maxlength="20" aria-label="New client code"
                 style="display:none;margin-top:0.4rem">
             </div>
             <div class="form-group">
@@ -860,10 +876,10 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
                   </div>
       </div>
       <div class="toolbar">
-        <select class="filter-sel" onchange="renderAllSessions()" id="all-filter-client">
+        <select class="filter-sel" aria-label="Filter by client" onchange="renderAllSessions()" id="all-filter-client">
           <option value="">All Clients</option>
         </select>
-        <select class="filter-sel" onchange="renderAllSessions()" id="all-filter-step">
+        <select class="filter-sel" aria-label="Filter by next step" onchange="renderAllSessions()" id="all-filter-step">
           <!-- options generated from NEXT_ACTION at init -->
           <option value="">All Next Steps</option>
         </select>
@@ -973,6 +989,7 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
             <li>open it a different way than usual (for example, from a web link instead of your file).</li>
           </ul>
           <p><strong>Set up a backup above and none of this can cost you your work.</strong> A backup file on your computer (or in Google&nbsp;Drive) isn't affected by clearing your browser. If it ever happens, reopen PICKLER and use <strong>Save&nbsp;▾ → Import</strong> to restore from your backup file.</p>
+          <p>PICKLER also protects you from its own oops moments: before every <strong>delete</strong> it quietly saves a full copy of your data (the last 3 are kept — <strong>Save&nbsp;▾ → ⏪&nbsp;Restore&nbsp;snapshot</strong>), and before every <strong>import</strong> it saves one you can bring back with <strong>Save&nbsp;▾ → ↩&nbsp;Restore&nbsp;pre-import&nbsp;snapshot</strong>. These survive closing the app, so a mistaken delete is recoverable even after a restart.</p>
         </div>
       </details>
     </div>
@@ -1124,7 +1141,7 @@ const STEP_SUGGESTIONS = [
   { label: 'Auto-linked to Time2Track', url: 'https://app.time2track.com/activities' },
   { label: 'Suggest: your Supervisor Log document', url: '' },
   { label: 'Suggest: your Box folder (notes & drafts)', url: '' },
-  { label: 'Suggest: OCHIN / Epic link', url: '' },
+  { label: 'Suggest: OCHIN / Epic link', url: 'https://remote.ochin.info/logon/LogonPoint/tmindex.html' },
 ];
 
 // Wrapped so a malformed value can't throw at module scope and abort the whole
@@ -1139,6 +1156,19 @@ try {
 function saveStepLinks() {
   safeSet('stepLinks', JSON.stringify(stepLinks));
   queueAutoBackup();
+}
+
+// Normalise any user- or import-supplied URL to a safe http(s) href, or '' if it
+// can't be. Everything that becomes an href or reaches window.open goes through
+// here, so an imported backup can't smuggle a javascript:/data: link into a click.
+function sanitizeUrl(raw) {
+  let s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;   // bare domains → https
+  try {
+    const u = new URL(s);
+    return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+  } catch (e) { return ''; }
 }
 
 // ── Undo / Redo stacks ─────────────────────────────────────────────────────────
@@ -1260,6 +1290,7 @@ function applySnap(snap) {
     snap.reqSnaps.slice().sort((a,b) => a.idx - b.idx)
       .forEach(x => requirements.splice(Math.min(x.idx, requirements.length), 0, Object.assign({}, x.req)));
     if (snap.meta) clientMeta[snap.client] = Object.assign({}, snap.meta);
+    else delete clientMeta[snap.client];   // clears a delete-tombstone left on a builtin
     if (snap.wasCustom && !customClients.includes(snap.client)) customClients.push(snap.client);
     saveSessions(); saveRequirements(); saveClientMeta();
     inverse = { type:'client-restore', client: snap.client };
@@ -1277,6 +1308,7 @@ function applySnap(snap) {
     requirements = requirements.filter(r => r.client !== client);
     customClients = customClients.filter(c => c !== client);
     delete clientMeta[client];
+    if (BUILTIN_CLIENTS.includes(client)) clientMeta[client] = { archived:false, color:'', deleted:true };
     saveSessions(); saveRequirements(); saveClientMeta();
   } else if (snap.type === 'req-change') {
     const r = requirements.find(x => x.id === snap.id);
@@ -1308,8 +1340,17 @@ function applySnap(snap) {
   return inverse;
 }
 
+// Undo/redo mutate the very state a pending confirm captured (e.g. the
+// "Complete X?" dialog opened before the undo) — dismiss it rather than let a
+// stale OK apply a half-true action.
+function cancelStaleConfirm() {
+  const bar = document.getElementById('confirm-bar');
+  if (bar && bar.style.display !== 'none') closeConfirmModal();
+}
+
 function doUndo() {
   if (undoStack.length === 0) return;
+  cancelStaleConfirm();
   const inverse = applySnap(undoStack.pop());
   if (inverse) {
     redoStack.push(inverse);
@@ -1321,6 +1362,7 @@ function doUndo() {
 
 function doRedo() {
   if (redoStack.length === 0) return;
+  cancelStaleConfirm();
   const inverse = applySnap(redoStack.pop());
   // Pushed directly (not via pushUndo) so the remaining redo history survives.
   if (inverse) {
@@ -1402,6 +1444,10 @@ function setAutoBackupBtn(state) {
     btn.textContent = '💾 Auto-Backup: Click to resume';
     btn.title = 'Click to re-grant permission for this browser session';
     btn.style.color = 'var(--warning)';
+  } else if (state === 'error') {
+    btn.textContent = '💾 Auto-Backup: Error';
+    btn.title = 'The last save to your file failed — click to pick the file again';
+    btn.style.color = 'var(--error)';
   } else {
     btn.textContent = '💾 Auto-Backup: Off';
     btn.title = AUTOBACKUP_SUPPORTED ? 'Auto-save backups to a file on your computer' : 'Not supported in this browser — use Export/Import instead';
@@ -1421,18 +1467,26 @@ function setAutoBackupBtn(state) {
 // Opens the OS file picker and points Auto-Backup at whatever file the user
 // chooses, saving the handle so it survives reloads.
 async function pickAutoBackupFile() {
+  let handle;
   try {
-    const handle = await window.showSaveFilePicker({
+    handle = await window.showSaveFilePicker({
       suggestedName: 'doc-tracker-autobackup.json',
       types: [{ description: 'JSON backup', accept: { 'application/json': ['.json'] } }]
     });
-    autoBackupHandle = handle;
-    await idbSet('backupHandle', handle);
-    setAutoBackupBtn('on');
-    await writeAutoBackupNow();
   } catch (e) {
-    // user cancelled the picker — no-op
+    return;   // user cancelled the picker — no-op
   }
+  autoBackupHandle = handle;
+  // Persisting the handle is separate from picking it: an IndexedDB failure is
+  // NOT a cancellation. Backup still runs this session — but say the choice
+  // won't be remembered, instead of silently behaving like nothing happened.
+  try { await idbSet('backupHandle', handle); }
+  catch (e) {
+    console.warn('Could not persist backup handle:', e);
+    showAlertModal('Heads up', 'Auto-Backup is on for this session, but your file choice could not be saved — you may need to pick the file again next time you open the app.');
+  }
+  setAutoBackupBtn('on');
+  await writeAutoBackupNow();
 }
 
 async function onAutoBackupBtn() {
@@ -1490,17 +1544,48 @@ function queueAutoBackup() {
   queueDriveBackup();
 }
 
+let autoBackupWarningDismissed = false;
+function showAutoBackupWarning() {
+  if (autoBackupWarningDismissed) return;
+  const bar = document.getElementById('autobackup-warning-bar');
+  if (bar) bar.style.display = 'flex';
+}
+function hideAutoBackupWarning() {
+  const bar = document.getElementById('autobackup-warning-bar');
+  if (bar) bar.style.display = 'none';
+}
+function dismissAutoBackupWarning() { autoBackupWarningDismissed = true; hideAutoBackupWarning(); }
+
+// In-flight guard: a direct call racing the pending debounce could interleave
+// two createWritable/close sequences, letting an OLDER snapshot commit last.
+// Overlapping calls now coalesce into one trailing re-run of the latest state.
+let autoBackupWriting = false;
+let autoBackupRerun = false;
 async function writeAutoBackupNow() {
   if (!autoBackupHandle) return;
+  if (autoBackupWriting) { autoBackupRerun = true; return; }
+  autoBackupWriting = true;
   try {
     const perm = await autoBackupHandle.queryPermission({ mode: 'readwrite' });
-    if (perm !== 'granted') { setAutoBackupBtn('needs-permission'); return; }
+    if (perm !== 'granted') { setAutoBackupBtn('needs-permission'); showAutoBackupWarning(); return; }
     const data = backupData();
     const writable = await autoBackupHandle.createWritable();
     await writable.write(JSON.stringify(data, null, 2));
     await writable.close();
+    // Success — clear any prior failure state so the button can't stay red/"On"
+    // while actually broken.
+    setAutoBackupBtn('on');
+    autoBackupWarningDismissed = false;   // a fresh failure later may warn again
+    hideAutoBackupWarning();
   } catch (e) {
+    // A silent failure here is dangerous: the button would keep saying "On" while
+    // nothing is being written. Surface it on the button AND a persistent banner.
     console.warn('Auto-backup write failed:', e);
+    setAutoBackupBtn('error');
+    showAutoBackupWarning();
+  } finally {
+    autoBackupWriting = false;
+    if (autoBackupRerun) { autoBackupRerun = false; writeAutoBackupNow(); }
   }
 }
 
@@ -1546,21 +1631,46 @@ function setDriveBtn(state) {
   }
 }
 
+// Settle the pending token request exactly once, clearing the slot first so a
+// late duplicate settle (e.g. timeout racing the real callback) is a no-op.
+function settleDriveToken(err, token) {
+  const res = drivePendingResolve, rej = drivePendingReject;
+  drivePendingResolve = null;
+  drivePendingReject = null;
+  if (err) { if (rej) rej(err); }
+  else { if (res) res(token); }
+}
+
+// If GIS never calls back at all (some blockers just swallow the popup), fail
+// after a bounded wait instead of hanging the backup chain forever. `let` so
+// tests can shorten it.
+let driveTokenTimeoutMs = 45000;
+let driveTokenTimeoutTimer = null;
+
 function initDriveTokenClient() {
   if (driveTokenClient || !driveClientId || typeof google === 'undefined' || !google.accounts) return;
   driveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: driveClientId,
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: (resp) => {
+      clearTimeout(driveTokenTimeoutTimer);
       if (resp.error) {
         driveConnected = false;
-        if (drivePendingReject) drivePendingReject(resp);
+        settleDriveToken(resp);
         return;
       }
       driveAccessToken = resp.access_token;
       driveTokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
       driveConnected = true;
-      if (drivePendingResolve) drivePendingResolve(driveAccessToken);
+      settleDriveToken(null, driveAccessToken);
+    },
+    // GIS reports a closed or blocked consent popup HERE, not via `callback`.
+    // Without this, the promise below never settled: the backup chain hung
+    // silently and the button stayed green "On" while nothing was backed up.
+    error_callback: (err) => {
+      clearTimeout(driveTokenTimeoutTimer);
+      driveConnected = false;
+      settleDriveToken(err || new Error('gis-error'));
     },
   });
 }
@@ -1570,11 +1680,19 @@ function requestDriveToken(interactive) {
     if (!driveClientId) { reject(new Error('no-client-id')); return; }
     if (typeof google === 'undefined' || !google.accounts) { reject(new Error('gis-not-loaded')); return; }
     initDriveTokenClient();
+    // A second request while one is pending strands the first caller's promise;
+    // fail the old one explicitly rather than leaving it forever-pending.
+    settleDriveToken(new Error('superseded-by-newer-request'));
     drivePendingResolve = resolve;
     drivePendingReject = reject;
+    clearTimeout(driveTokenTimeoutTimer);
+    driveTokenTimeoutTimer = setTimeout(() => settleDriveToken(new Error('token-timeout')), driveTokenTimeoutMs);
     try {
       driveTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
-    } catch (e) { reject(e); }
+    } catch (e) {
+      clearTimeout(driveTokenTimeoutTimer);
+      settleDriveToken(e);
+    }
   });
 }
 
@@ -1583,21 +1701,37 @@ async function ensureDriveToken(interactive) {
   return requestDriveToken(interactive);
 }
 
+// Verify the stored backup file still exists. Only forget the id when Drive says
+// the file is DEFINITIVELY gone (404 / 410 / trashed). Previously ANY failure —
+// a dropped connection, a 500, an expired token — cleared the id, so the next
+// successful write created a SECOND backup file and silently orphaned the first;
+// repeated blips meant a Drive littered with stale partial backups. Transient
+// failures now propagate so writeDriveBackupNow's catch surfaces them instead.
 async function driveFindOrVerifyFile(token) {
-  if (driveFileId) {
-    try {
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?fields=id,trashed`, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.ok) {
-        const f = await res.json();
-        if (!f.trashed) return driveFileId;
-      }
-    } catch (e) { /* fall through to recreate */ }
-    driveFileId = null;
-    safeRemove('driveBackupFileId');
+  if (!driveFileId) return null;
+  let res;
+  try {
+    res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?fields=id,trashed`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+  } catch (e) {
+    throw new Error('drive-verify-network');   // offline/DNS: keep the id, fail this run
   }
-  return null;
+  if (res.ok) {
+    let f = null;
+    try { f = await res.json(); } catch (e) { throw new Error('drive-verify-badjson'); }
+    if (!f.trashed) return driveFileId;
+    forgetDriveFile();                         // trashed → genuinely unusable, recreate
+    return null;
+  }
+  if (res.status === 404 || res.status === 410) { forgetDriveFile(); return null; }
+  // 401/403/429/5xx are transient or auth issues — never destroy the mapping.
+  throw new Error('drive-verify-' + res.status);
+}
+
+function forgetDriveFile() {
+  driveFileId = null;
+  safeRemove('driveBackupFileId');
 }
 
 async function driveCreateFile(token, contentStr) {
@@ -1619,13 +1753,17 @@ async function driveCreateFile(token, contentStr) {
   return driveFileId;
 }
 
+// Returns true on success, false if the file turned out to be gone (deleted
+// between verify and write) so the caller can recreate it once.
 async function driveUpdateFile(token, fileId, contentStr) {
   const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
     method: 'PATCH',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: contentStr
   });
-  if (!res.ok) throw new Error('Drive update failed: ' + res.status);
+  if (res.ok) return true;
+  if (res.status === 404 || res.status === 410) { forgetDriveFile(); return false; }
+  throw new Error('Drive update failed: ' + res.status);
 }
 
 function queueDriveBackup() {
@@ -1650,14 +1788,23 @@ function hideBackupWarning() {
 }
 function dismissBackupWarning() { backupWarningDismissed = true; hideBackupWarning(); }
 
+// Same in-flight coalescing as the file auto-backup: overlapping runs could
+// both pass the verify step (double-create) or finish out of order (stale wins).
+let driveWriting = false;
+let driveRerun = false;
 async function writeDriveBackupNow() {
+  if (driveWriting) { driveRerun = true; return; }
+  driveWriting = true;
   try {
     const token = await ensureDriveToken(false);
     const data = backupData();
     const contentStr = JSON.stringify(data, null, 2);
     let fileId = await driveFindOrVerifyFile(token);
     if (!fileId) fileId = await driveCreateFile(token, contentStr);
-    else await driveUpdateFile(token, fileId, contentStr);
+    else if (!await driveUpdateFile(token, fileId, contentStr)) {
+      // file vanished between verify and write — recreate exactly once
+      fileId = await driveCreateFile(token, contentStr);
+    }
     setDriveBtn('on');
     driveFailCount = 0;
     backupWarningDismissed = false; // a fresh failure later may warn again
@@ -1667,8 +1814,21 @@ async function writeDriveBackupNow() {
     setDriveBtn('needs-permission');
     driveFailCount++;
     if (driveFailCount >= 2) showBackupWarning(); // one failure may be a transient token refresh
+  } finally {
+    driveWriting = false;
+    if (driveRerun) { driveRerun = false; writeDriveBackupNow(); }
   }
 }
+
+// Flush pending debounced backups when the page is being hidden or closed.
+// Best effort — the async writes may not finish during teardown, but
+// visibilitychange fires early enough that they usually do; without this, the
+// last edit before closing was simply missing from the backup file and Drive.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'hidden') return;
+  if (autoBackupTimer) { clearTimeout(autoBackupTimer); autoBackupTimer = null; writeAutoBackupNow(); }
+  if (driveBackupTimer) { clearTimeout(driveBackupTimer); driveBackupTimer = null; writeDriveBackupNow(); }
+});
 
 async function onDriveConnectBtn() {
   if (!driveClientId) { openDriveSettings(); return; }
@@ -1691,6 +1851,7 @@ function openDriveSettings() {
   [document.getElementById('drive-settings-overlay'), document.getElementById('drive-settings-modal')].forEach(el => {
     el.style.visibility = 'visible'; el.style.opacity = '1'; el.style.pointerEvents = 'auto';
   });
+  document.getElementById('drive-settings-input').focus();   // move keyboard users into the dialog
 }
 
 function closeDriveSettings() {
@@ -1728,8 +1889,21 @@ let nextId = 49;
 
 // Ids must stay unique across reloads and imports, so recompute from whatever
 // sessions are actually loaded instead of trusting the hard-coded seed value.
+// Session ids must be monotonic and never reused. Rewards are tracked by id in
+// `rewardedSessions`, so if a deleted high id were handed out again the new
+// session would inherit the old one's "already rewarded" mark and earn no brine.
+// Persist the counter and only ever move it forward: never below the highest id
+// currently present, never below what we've already handed out.
 function recomputeNextId() {
-  nextId = sessions.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1;
+  const maxId  = sessions.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0);
+  const stored = parseInt(safeGet('nextId'), 10);
+  nextId = Math.max(Number.isFinite(stored) ? stored : 0, maxId + 1);
+  safeSet('nextId', String(nextId));
+}
+function allocSessionId() {
+  const id = nextId++;
+  safeSet('nextId', String(nextId));   // persist immediately so a reload can't reissue it
+  return id;
 }
 
 // requirements: one record per client × doc type
@@ -1792,7 +1966,9 @@ function allClientCodes(includeArchived=true) {
   requirements.forEach(r => r.client && codes.add(r.client));
   Object.keys(clientMeta || {}).forEach(c => c && codes.add(c));
   customClients.forEach(c => c && codes.add(c));
-  return Array.from(codes).filter(c => includeArchived || !(clientMeta[c] && clientMeta[c].archived)).sort();
+  return Array.from(codes)
+    .filter(c => !isDeletedClient(c))   // tombstoned builtins are gone, not ghosts
+    .filter(c => includeArchived || !(clientMeta[c] && clientMeta[c].archived)).sort();
 }
 
 function isArchived(client) {
@@ -1823,8 +1999,13 @@ function clientReportCount(client) { return requirements.filter(r => r.client ==
 
 function clientManagerNewClient() {
   showPromptModal('New Client', 'Enter a client code:', '', raw => {
-    const client = (raw || '').trim().toUpperCase();
+    const client = (raw || '').trim().toUpperCase().slice(0, 20);
     if (!client) return;
+    if (allClientCodes(true).includes(client)) {
+      showAlertModal('Already exists', esc(client) + ' is already a client.');   // was a silent no-op
+      return;
+    }
+    reviveClient(client);
     if (!customClients.includes(client)) customClients.push(client);
     if (!clientMeta[client]) clientMeta[client] = { archived:false, color:'' };
     ensureReportRowsForClient(client);
@@ -1835,7 +2016,7 @@ function clientManagerNewClient() {
 
 function clientManagerRename(oldClient) {
   showPromptModal('Rename ' + oldClient, 'New client code:', oldClient, raw => {
-    const newClient = (raw || '').trim().toUpperCase();
+    const newClient = (raw || '').trim().toUpperCase().slice(0, 20);
     if (!newClient || newClient === oldClient) return;
     if (allClientCodes(true).includes(newClient)) { showAlertModal('Name taken', esc(newClient) + ' already exists.'); return; }
     pushUndo({ type:'client-rename', from: oldClient, to: newClient });
@@ -1914,11 +2095,13 @@ function clientManagerDeleteAsk(client) {
     '• ' + sessionCount + ' session' + (sessionCount === 1 ? '' : 's') + '<br>' +
     '• Calendar history<br>' +
     '• ' + reportCount + ' report record' + (reportCount === 1 ? '' : 's') + '<br><br>' +
-    'You can restore everything afterwards with ↩ Undo.';
+    'You can restore everything with ↩ Undo, or later from ⬇ Save → ⏪ Restore snapshot.';
   showConfirmModal('Delete ' + client + '?', body, 'Delete Client', function() { clientManagerDelete(client); }, 'var(--error)');
 }
 
 function clientManagerDelete(client) {
+  pushSafetySnapshot('before deleting client ' + client);
+  const wasBuiltin = BUILTIN_CLIENTS.includes(client);
   const sessSnaps = [], reqSnaps = [];
   sessions.forEach((s, i) => { if (s.client === client) sessSnaps.push({ session: JSON.parse(JSON.stringify(s)), idx: i }); });
   requirements.forEach((r, i) => { if (r.client === client) reqSnaps.push({ req: JSON.parse(JSON.stringify(r)), idx: i }); });
@@ -1929,6 +2112,9 @@ function clientManagerDelete(client) {
   requirements = requirements.filter(r => r.client !== client);
   customClients = customClients.filter(c => c !== client);
   delete clientMeta[client];
+  // Builtins live in a hardcoded list, so without a tombstone a deleted one
+  // reappeared in the Add-Session dropdown as if the delete never happened.
+  if (wasBuiltin) clientMeta[client] = { archived:false, color:'', deleted:true };
   saveSessions();
   saveRequirements();
   saveClientMeta();
@@ -1949,7 +2135,7 @@ function fmtDate(iso) {
 
 function statusBadge(s, sessionId) {
   if (s === 'COMPLETE') return `<span class="badge badge-complete">${s}</span>`;
-  if (s === 'OVERDUE')  return `<span class="badge badge-overdue">${s}</span>`;
+  // (No OVERDUE branch: deriveStatus never produces it — it was dead code.)
   const idx = NEXT_ACTION.indexOf(s);
   const hasLink = idx >= 0 && stepLinks[idx];
   const linkIcon = hasLink ? '↗' : '＋';
@@ -1966,9 +2152,9 @@ function statusBadge(s, sessionId) {
 
 function badgeClick(e, idx) {
   if (idx < 0) return;
-  const url = stepLinks[idx];
+  const url = sanitizeUrl(stepLinks[idx]);
   if (url) {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   } else {
     badgeEdit(e, idx);
   }
@@ -1989,10 +2175,18 @@ function badgeEdit(e, idx) {
   // are unreliable in embedded webview panels.
   pop.style.cssText = 'position:absolute;z-index:9999;background:var(--surface);border:1px solid var(--divider);border-radius:12px;padding:1rem;width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.22);display:flex;flex-direction:column;gap:0.6rem;';
 
-  const x = Math.min(e ? e.clientX : 200, window.innerWidth - 320) + window.scrollX;
-  const y = Math.min(e ? e.clientY + 12 : 200, window.innerHeight - 200) + window.scrollY;
-  pop.style.left = x + 'px';
-  pop.style.top = y + 'px';
+  // Position near the pointer — or, for keyboard activation (clientX/Y are 0),
+  // anchor under the badge itself instead of the viewport corner. Clamped on
+  // ALL sides, using clientWidth (window.innerWidth reads 0 in some webviews).
+  const vw = document.documentElement.clientWidth || window.innerWidth || 1024;
+  const vh = document.documentElement.clientHeight || window.innerHeight || 768;
+  const badge = e && e.target && e.target.closest ? e.target.closest('.status-badge-link') : null;
+  let px, py;
+  if (e && (e.clientX || e.clientY)) { px = e.clientX; py = e.clientY + 12; }
+  else if (badge) { const br = badge.getBoundingClientRect(); px = br.left; py = br.bottom + 6; }
+  else { px = 200; py = 200; }
+  pop.style.left = (Math.max(8, Math.min(px, vw - 320)) + window.scrollX) + 'px';
+  pop.style.top  = (Math.max(8, Math.min(py, vh - 200)) + window.scrollY) + 'px';
 
   // Build buttons separately to avoid quote escaping issues
   const btnStyle = 'padding:0.45rem 0.8rem;border-radius:7px;cursor:pointer;font-size:0.875rem;';
@@ -2005,7 +2199,7 @@ function badgeEdit(e, idx) {
   pop.innerHTML =
     '<div style="font-weight:700;font-size:0.9rem">' + STEP_NAMES[idx] + '</div>' +
     (suggestion ? '<div style="font-size:0.75rem;color:var(--muted);font-style:italic">' + suggestion + '</div>' : '') +
-    '<input id="link-pop-input" type="url" value="' + esc(currentUrl) + '" placeholder="https://…"' +
+    '<input id="link-pop-input" type="url" aria-label="Link URL" value="' + esc(currentUrl) + '" placeholder="https://…"' +
     ' style="width:100%;padding:0.5rem 0.7rem;border:1px solid var(--divider);border-radius:7px;background:var(--surface-off2);color:var(--text);font-size:0.875rem;box-sizing:border-box"' +
     (isAuto ? ' disabled' : '') + '>' +
     '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">' + btns + '</div>';
@@ -2020,7 +2214,7 @@ function badgeEdit(e, idx) {
   const cancelBtn = document.getElementById('link-pop-cancel');
 
   if (saveBtn) saveBtn.onclick = () => saveLinkPop(idx);
-  if (openBtn) openBtn.onclick = () => window.open(stepLinks[idx] || currentUrl, '_blank');
+  if (openBtn) openBtn.onclick = () => { const u = sanitizeUrl(stepLinks[idx] || currentUrl); if (u) window.open(u, '_blank', 'noopener,noreferrer'); };
   if (removeBtn) removeBtn.onclick = () => removeLinkPop(idx);
   if (cancelBtn) cancelBtn.onclick = () => pop.remove();
   if (inp && !isAuto) { inp.focus(); inp.select(); }
@@ -2029,16 +2223,24 @@ function badgeEdit(e, idx) {
   setTimeout(() => {
     document.addEventListener('click', function handler(ev) {
       const p = document.getElementById('link-popover');
-      if (p && !p.contains(ev.target)) { p.remove(); document.removeEventListener('click', handler); }
+      // Popover already closed by its own buttons/Escape: detach instead of
+      // leaking one permanent document listener per open (audit PICK-023).
+      if (!p) { document.removeEventListener('click', handler); return; }
+      // The validation alert's OK button is outside the popover — clicking it
+      // must not destroy the editor and the typed URL (audit PICK-011).
+      if (ev.target.closest('#confirm-bar')) return;
+      if (!p.contains(ev.target)) { p.remove(); document.removeEventListener('click', handler); }
     });
   }, 100);
 }
 
 function saveLinkPop(idx) {
-  let val = (document.getElementById('link-pop-input') || {}).value || '';
-  val = val.trim();
-  if (val && !val.startsWith('http://') && !val.startsWith('https://')) val = 'https://' + val;
-  stepLinks[idx] = val;
+  const raw = (document.getElementById('link-pop-input') || {}).value || '';
+  if (raw.trim() && !sanitizeUrl(raw)) {
+    showAlertModal('Invalid link', 'Enter a valid web address (http:// or https://).');
+    return;
+  }
+  stepLinks[idx] = sanitizeUrl(raw);
   saveStepLinks();
   const p = document.getElementById('link-popover');
   if (p) p.remove();
@@ -2105,7 +2307,19 @@ function focusSessionRow(id) {
   if (!s) return;
   switchView(s.status === 'COMPLETE' ? 'sessions' : 'dashboard');
   const tbody = s.status === 'COMPLETE' ? 'all-tbody' : 'attention-tbody';
-  const row = document.querySelector('#' + tbody + ' tr[data-id="' + id + '"]');
+  let row = document.querySelector('#' + tbody + ' tr[data-id="' + id + '"]');
+  if (!row) {
+    // Active table filters can hide the target row, making the calendar-dot
+    // click a silent no-op. Reset them and retry rather than doing nothing.
+    const ids = tbody === 'attention-tbody'
+      ? ['dash-filter-client', 'dash-filter-step'] : ['all-filter-client', 'all-filter-step'];
+    let cleared = false;
+    ids.forEach(fid => { const el = document.getElementById(fid); if (el && el.value) { el.value = ''; cleared = true; } });
+    if (cleared) {
+      renderAll();
+      row = document.querySelector('#' + tbody + ' tr[data-id="' + id + '"]');
+    }
+  }
   if (!row) return;
   row.scrollIntoView({ block: 'center' });
   row.classList.remove('row-flash-anim');
@@ -2123,24 +2337,40 @@ function toggleStepInline(sessionId, stepIdx, dotEl) {
 
   const apply = () => {
     pushUndo({id: sessionId, steps: [...s.steps]});
+    // Keyboard users: renderAll() below destroys the focused dot with the rest
+    // of the row — refocus its replacement so Tab position isn't reset to the
+    // top of the page after every toggle.
+    const hadFocus = dotEl && document.activeElement === dotEl;
+    const refocus = () => {
+      if (!hadFocus) return;
+      const nrow = document.querySelector('tr[data-id="' + sessionId + '"]');
+      const ndot = nrow && nrow.querySelectorAll('.dot')[stepIdx];
+      if (ndot) ndot.focus();
+    };
     s.steps[stepIdx] = turning_on ? 1 : 0;
     s.status = deriveStatus(s.steps);
     saveSessions();
     rewardIfNewlyComplete(s); // brine drop — only fires the first time this session completes
 
-    if (wouldComplete) {
+    // Re-derive from CURRENT steps: other steps may have changed while the
+    // confirm dialog sat open, and the captured wouldComplete could be stale —
+    // celebrating a completion that didn't actually happen.
+    const nowComplete = s.steps.every(Boolean);
+    if (nowComplete) {
       if (dotEl) { animateDot(dotEl); flashRow(dotEl); }
       setTimeout(() => {
         renderAll();
         launchConfetti();
+        refocus();
       }, 120);
     } else {
       if (turning_on && dotEl) {
         animateDot(dotEl);
         flashRow(dotEl);
-        setTimeout(() => renderAll(), 120);
+        setTimeout(() => { renderAll(); refocus(); }, 120);
       } else {
         renderAll();
+        refocus();
       }
     }
   };
@@ -2159,6 +2389,7 @@ function toggleStepInline(sessionId, stepIdx, dotEl) {
 // ── Particle burst on dot completion ─────────────────────────────────
 const PARTICLE_COLORS = ['#437a22','#6daa45','#a8e063','#d4efcc','#fff'];
 function burstParticles(dotEl) {
+  if (prefersReducedMotion()) return;
   const rect = dotEl.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
@@ -2205,9 +2436,10 @@ function doDelete(id) {
   const s = sessions.find(x => x.id === id);
   if (!s) return;
   showConfirmModal('Delete ' + s.client + ' ' + s.visit + '?',
-    'You can restore it afterwards with ↩ Undo.', 'Delete', () => {
+    'You can restore it with ↩ Undo, or later from ⬇ Save → ⏪ Restore snapshot.', 'Delete', () => {
       const idx = sessions.findIndex(x => x.id === id);
       if (idx === -1) return;
+      pushSafetySnapshot('before deleting ' + s.client + ' ' + s.visit);
       pushUndo({ type: 'delete', session: JSON.parse(JSON.stringify(sessions[idx])), idx });
       sessions = sessions.filter(x => x.id !== id);
       saveSessions();
@@ -2309,9 +2541,14 @@ function renderAllSessions() {
 
 function addOneYear(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0, 10);
+  // Pure string math. The old Date round-trip parsed in LOCAL time but
+  // serialized via toISOString (UTC), landing one day early in UTC+ zones;
+  // and Feb 29 + 1 year rolled over to Mar 1 instead of clamping.
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return '';
+  const [y, m, d] = parts;
+  const day = (m === 2 && d === 29) ? 28 : d;
+  return (y + 1) + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
 }
 
 function updateReqField(id, field, value) {
@@ -2422,7 +2659,12 @@ let calMonth = new Date().getMonth(); // 0-indexed
 // ── Dialogs — confirm / alert / prompt all share the one custom modal ─────────
 let _confirmCallback = null;
 
+let _confirmPrevFocus = null;   // element to return focus to when the bar closes
+
 function showConfirmModal(title, body, okLabel, onOk, okColor) {
+  // Remember where keyboard focus was (the bar moves it to the OK button), so
+  // closing can hand it back instead of dropping the user at the top of the page.
+  if (document.activeElement && document.activeElement !== document.body) _confirmPrevFocus = document.activeElement;
   document.getElementById('confirm-title').textContent = title;
   const bodyEl = document.getElementById('confirm-body');
   bodyEl.innerHTML = body || '';
@@ -2466,6 +2708,9 @@ function showPromptModal(title, body, defaultValue, onSubmit, okLabel) {
 function closeConfirmModal() {
   document.getElementById('confirm-bar').style.display = 'none';
   _confirmCallback = null;
+  const prev = _confirmPrevFocus;
+  _confirmPrevFocus = null;
+  if (prev && document.contains(prev) && typeof prev.focus === 'function') prev.focus();
 }
 
 // ── KPI star burst ───────────────────────────────────────────────────────────
@@ -2478,7 +2723,7 @@ function calNav(dir) {
 
 function calDotColor(status) {
   if (status === 'COMPLETE') return '#22c55e';
-  if (status === 'OVERDUE')  return '#ef4444';
+  // (No OVERDUE branch: deriveStatus never produces it — it was dead code.)
   return '#f59e0b';
 }
 
@@ -2553,6 +2798,20 @@ function renderCalendar() {
   grid.innerHTML = html;
 }
 
+// Honor prefers-reduced-motion in the JS-driven animations too (the CSS media
+// block can't reach confetti/particles spawned from script, or the roamer's
+// rAF flight path).
+const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+function prefersReducedMotion() { return !!(REDUCED_MOTION && REDUCED_MOTION.matches); }
+
+// Screen readers need heading semantics; the visual design uses styled divs.
+// Attribute-only annotation — zero visual change, re-applied after each render
+// so dynamically built sections are covered too.
+function annotateHeadings() {
+  document.querySelectorAll('.section-title:not([role]), .help-intro-title:not([role]), .renee-current-name:not([role])')
+    .forEach(el => { el.setAttribute('role', 'heading'); el.setAttribute('aria-level', '2'); });
+}
+
 function renderAll() {
   // Render only the visible view — the others re-render when switched to.
   const active = document.querySelector('.view.active');
@@ -2562,12 +2821,17 @@ function renderAll() {
   else if (id === 'view-requirements') renderRequirements();
   else if (id === 'view-coach') renderCoach();
   else if (id === 'view-renee') renderRenee();
+  annotateHeadings();
 }
 
 
 // ── COACH ─────────────────────────────────────────────────────────────
 let coachTimerInterval = null;
 let coachPickedId = null;
+let coachFocusedClient = null;   // set while the "I'm overwhelmed → one client" flow is active
+let coachCountdownInterval = null;   // 3-2-1 pre-timer countdown
+let coachCountdownTimeout = null;    // the "GO!" → start-beat handoff
+let coachRedirectTimeout = null;     // celebration screen's auto-advance
 let coachCurrentMode = null;
 let coachBottleneckStartId = null;
 
@@ -2576,6 +2840,7 @@ function renderCoach() {
   if (!shell) return;
   const incomplete = pendingSessions();
   if (incomplete.length === 0) {
+    clearCoachTimer();   // no queue → no screen for a leftover timer to serve
     shell.innerHTML = `<div class="coach-wrap"><div class="coach-all-done">
       <div class="coach-all-done-icon">🎉</div>
       <h2>All caught up.</h2>
@@ -2584,13 +2849,16 @@ function renderCoach() {
     return;
   }
   // Re-render whatever coach screen the user is on rather than kicking them
-  // back to the entry screen when data changes mid-flow.
+  // back to the entry screen when data changes mid-flow. The per-client focus
+  // screen tracks its own flag (it isn't a coachFlow mode), so check it too —
+  // otherwise any renderAll() during the focus flow dumped the user to entry.
+  if (coachFocusedClient) { coachFocusClient(coachFocusedClient); return; }
   if (coachCurrentMode) { coachFlow(coachCurrentMode); return; }
   coachShowEntry();
 }
 
 function coachShowEntry() {
-  coachPickedId = null; coachCurrentMode = null;
+  coachPickedId = null; coachCurrentMode = null; coachFocusedClient = null;
   clearCoachTimer();
   const shell = document.getElementById('coach-shell');
   const incomplete = pendingSessions();
@@ -2641,6 +2909,7 @@ function pickRandomTask() {
 }
 
 function coachFlow(mode) {
+  coachFocusedClient = null;   // entering any standard flow abandons the per-client focus
   clearCoachTimer();
   const shell = document.getElementById('coach-shell');
   const top = getTopSession();
@@ -2649,9 +2918,9 @@ function coachFlow(mode) {
   const stepsLeft = 7 - stepsDone;
 
   const nextStepIdx = top.steps.findIndex(v => !v);
-  const nextStepUrl = nextStepIdx >= 0 ? (stepLinks[nextStepIdx] || '') : '';
+  const nextStepUrl = nextStepIdx >= 0 ? sanitizeUrl(stepLinks[nextStepIdx]) : '';
   const linkBtn = nextStepUrl
-    ? `<a href="${esc(nextStepUrl)}" target="_blank" class="c-btn c-btn-ghost" style="text-decoration:none">Open ${STEP_NAMES[nextStepIdx]} ↗</a>`
+    ? `<a href="${esc(nextStepUrl)}" target="_blank" rel="noopener noreferrer" class="c-btn c-btn-ghost" style="text-decoration:none">Open ${STEP_NAMES[nextStepIdx]} ↗</a>`
     : '';
 
   const taskCard = `
@@ -2712,7 +2981,7 @@ function coachFlow(mode) {
 
   } else if (mode === 'toosmall') {
     const idx = top.steps.findIndex(v => !v);
-    const stepUrl = stepLinks[idx] || '';
+    const stepUrl = sanitizeUrl(stepLinks[idx]);
     const microStepsRaw = [
       ['Open a blank note', 'Type the client name and date', 'Save it — even empty'],
       ['Open the Disposition List', 'Find the client row', 'Add today\'s date'],
@@ -2726,7 +2995,7 @@ function coachFlow(mode) {
     // Step 1 gets a hyperlink if one exists for this step
     const micro = microRaw.map((m, i) => {
       if (i === 0 && stepUrl) {
-        return `<a href="${esc(stepUrl)}" target="_blank" style="color:var(--primary);text-decoration:underline">${m} ↗</a>`;
+        return `<a href="${esc(stepUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline">${m} ↗</a>`;
       }
       return m;
     });
@@ -2838,6 +3107,7 @@ function coachFlow(mode) {
 
 
 function coachFocusClient(clientCode) {
+  coachFocusedClient = clientCode;
   clearCoachTimer();
   const shell = document.getElementById('coach-shell');
   const clientSessions = sessions.filter(s => s.client === clientCode && s.status !== 'COMPLETE' && !isArchived(s.client))
@@ -2883,10 +3153,20 @@ function coachMarkDone(sessionId) {
     // just re-render coach
   }, 50);
   renderAll();
-  // Stay on coach, show next step
+  // Stay on coach, show next step. If the user committed to focusing on ONE
+  // client ("I'm overwhelmed" flow), keep them there — the old unconditional
+  // coachFlow('start') bounced them to the globally least-complete session,
+  // which could belong to a different client one click after they chose focus.
+  // (Read the flag from a local: the renderAll() above re-renders coach, and
+  // any path through coachShowEntry would have cleared it.)
+  const focusCtx = coachFocusedClient;
   const still = sessions.find(x => x.id === sessionId);
   if (still && still.status !== 'COMPLETE') {
-    coachFlow('start');
+    if (focusCtx && still.client === focusCtx) {
+      coachFocusClient(focusCtx);
+    } else {
+      coachFlow('start');
+    }
   } else {
     // celebrate then return to entry
     const shell = document.getElementById('coach-shell');
@@ -2926,8 +3206,14 @@ function coachShowQueue() {
 }
 
 // ── Timer ──────────────────────────────────────────────────────────────
+// Clears EVERY coach-owned timer. Previously the countdown interval, its GO
+// timeout, and the celebration redirect were untracked — they survived screen
+// changes and injected UI into (or navigated away from) whatever came next.
 function clearCoachTimer() {
-  if (coachTimerInterval) { clearInterval(coachTimerInterval); coachTimerInterval = null; }
+  if (coachTimerInterval)    { clearInterval(coachTimerInterval);   coachTimerInterval = null; }
+  if (coachCountdownInterval){ clearInterval(coachCountdownInterval); coachCountdownInterval = null; }
+  if (coachCountdownTimeout) { clearTimeout(coachCountdownTimeout); coachCountdownTimeout = null; }
+  if (coachRedirectTimeout)  { clearTimeout(coachRedirectTimeout);  coachRedirectTimeout = null; }
 }
 
 function coachTimer(seconds) {
@@ -2978,6 +3264,12 @@ function backupData() {
     pickleUnlocked: (typeof pickleUnlocked !== 'undefined' ? pickleUnlocked : [STARTER_FORM]),
     pickleCurrent: (typeof pickleCurrent !== 'undefined' ? pickleCurrent : STARTER_FORM),
     rewardedSessions: (typeof rewardedSessions !== 'undefined' ? [...rewardedSessions] : []),
+    // Counters/preferences that were silently lost in an export→clear→import
+    // round trip: a reissued nextId could hand a fresh session an already-
+    // rewarded id (blocking its brine); theme and roam prefs just reset.
+    nextId: (typeof nextId !== 'undefined' ? nextId : 1),
+    reneeRoam: safeGet('reneeRoam'),
+    themeMode: safeGet('themeMode'),
   };
 }
 
@@ -2995,7 +3287,9 @@ function exportData() {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Deferred: revoking synchronously after click() can abort the download in
+  // some browsers before the fetch of the blob URL begins.
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 // Validates and coerces a parsed backup into the app's data shapes. Throws on
@@ -3003,6 +3297,13 @@ function exportData() {
 // a half-valid backup could otherwise corrupt saved state.
 function normalizeImportedData(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('not an object');
+  // Every backup key is individually optional, but a file with NONE of them is
+  // not a tracker backup at all ({} or foreign JSON). Without this check, such a
+  // file sails through, the preview echoes the CURRENT data's counts back as the
+  // file's contents, and the user gets a false "Backup restored" success.
+  const KNOWN_BACKUP_KEYS = ['sessions','stepLinks','requirements','clientMeta',
+    'customClients','brineInventory','pickleUnlocked','pickleCurrent','rewardedSessions'];
+  if (!KNOWN_BACKUP_KEYS.some(k => data[k] !== undefined)) throw new Error('not a tracker backup');
   const out = {};
   const isDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
   if (data.sessions !== undefined) {
@@ -3033,7 +3334,9 @@ function normalizeImportedData(data) {
   }
   if (data.stepLinks !== undefined) {
     if (!Array.isArray(data.stepLinks)) throw new Error('stepLinks must be an array');
-    out.stepLinks = STEP_NAMES.map((_, i) => typeof data.stepLinks[i] === 'string' ? data.stepLinks[i] : '');
+    // Sanitise every imported link — a backup file is untrusted input, and these
+    // strings become href/window.open targets. Non-http(s) values are dropped.
+    out.stepLinks = STEP_NAMES.map((_, i) => sanitizeUrl(data.stepLinks[i]));
   }
   if (data.requirements !== undefined) {
     if (!Array.isArray(data.requirements)) throw new Error('requirements must be an array');
@@ -3081,7 +3384,74 @@ function normalizeImportedData(data) {
   if (Array.isArray(data.rewardedSessions)) {
     out.rewardedSessions = data.rewardedSessions.map(Number).filter(Number.isFinite);
   }
+  const nid = Number(data.nextId);
+  if (Number.isFinite(nid) && nid > 0) out.nextId = Math.floor(nid);
+  if (data.reneeRoam === '0' || data.reneeRoam === '1') out.reneeRoam = data.reneeRoam;
+  if (data.themeMode === 'light' || data.themeMode === 'dark') out.themeMode = data.themeMode;
   return out;
+}
+
+// The "Restore pre-import snapshot" menu item only appears once a snapshot exists.
+function refreshSnapshotBtn() {
+  const b = document.getElementById('restore-snapshot-btn');
+  if (b) b.style.display = safeGet('preImportSnapshot') ? 'block' : 'none';
+}
+
+// Distinct client codes present in a (sessions[], clientMeta{}) pair.
+function distinctClientCount(sess, meta) {
+  const set = new Set((sess || []).map(s => s.client));
+  Object.keys(meta || {}).forEach(c => set.add(c));
+  return set.size;
+}
+
+// Actually apply an already-validated backup. Only reached after the user
+// confirms. `snapshotSaved` reports whether the pre-import snapshot actually
+// persisted, so the success message never promises an undo path that isn't there.
+function applyImport(clean, fileName, snapshotSaved) {
+  // The undo/redo stacks hold snapshots recorded against the PRE-import dataset,
+  // keyed by session id. Left alive, Ctrl+Z would mutate whichever imported
+  // sessions happen to share those ids — including completing one outside the
+  // reward gate. History cannot survive a dataset swap.
+  undoStack = [];
+  redoStack = [];
+  if (clean.sessions) { sessions.length = 0; clean.sessions.forEach(s => sessions.push(s)); }
+  if (clean.stepLinks) { clean.stepLinks.forEach((v, i) => { stepLinks[i] = v; }); }
+  if (clean.requirements) { requirements.length = 0; clean.requirements.forEach(r => requirements.push(r)); }
+  if (clean.clientMeta) { clientMeta = clean.clientMeta; saveClientMeta(); }
+  if (clean.customClients) { customClients = clean.customClients; }
+  sessions.forEach(s => { s.status = deriveStatus(s.steps); });
+  recomputeNextId();
+  saveSessions();
+  saveStepLinks();
+  saveRequirements(); // was missing → restored report dates reverted on next reload
+  // Renée pickle state from the backup, then re-baseline so any completed
+  // sessions the backup didn't already mark can't pay out on this import.
+  if (clean.brineInventory) brineInventory = clean.brineInventory;
+  if (clean.pickleUnlocked) pickleUnlocked = clean.pickleUnlocked;
+  if (clean.pickleCurrent) pickleCurrent = clean.pickleCurrent;
+  // When the SESSIONS were replaced but the backup carries no reward ledger
+  // (e.g. an older or hand-made backup), keeping the previous dataset's ledger
+  // would silently mark id-colliding imported sessions as already paid. Reset
+  // it; baselineRewardedSessions below re-marks the imported COMPLETE ones.
+  if (clean.sessions) rewardedSessions = new Set(clean.rewardedSessions || []);
+  else if (clean.rewardedSessions) rewardedSessions = new Set(clean.rewardedSessions);
+  // Restore the monotonic id counter (never backwards) and preferences.
+  if (clean.nextId) { nextId = Math.max(nextId, clean.nextId); safeSet('nextId', String(nextId)); }
+  if (clean.reneeRoam) setReneeRoam(clean.reneeRoam === '1');
+  if (clean.themeMode) setThemeMode(clean.themeMode);
+  if (!pickleUnlocked.includes(STARTER_FORM)) pickleUnlocked.unshift(STARTER_FORM);
+  if (!pickleUnlocked.includes(pickleCurrent)) pickleCurrent = STARTER_FORM;
+  baselineRewardedSessions();
+  savePickleState();
+  updateUndoBtn();
+  refreshSnapshotBtn();
+  refreshSafetyBtn();
+  renderAll();
+  showAlertModal('Backup restored',
+    'Restored from <strong>' + esc(fileName) + '</strong>.' +
+    (snapshotSaved
+      ? '<br><br>Your previous data was snapshotted first — if this was a mistake, you can put it back with <strong>↩ Restore pre-import snapshot</strong> in the ⬇ Save menu.'
+      : ''));
 }
 
 function importData(input) {
@@ -3089,49 +3459,148 @@ function importData(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
+    let clean;
     try {
-      const clean = normalizeImportedData(JSON.parse(e.target.result));
-      if (clean.sessions) {
-        sessions.length = 0;
-        clean.sessions.forEach(s => sessions.push(s));
-      }
-      if (clean.stepLinks) {
-        clean.stepLinks.forEach((v, i) => { stepLinks[i] = v; });
-      }
-      if (clean.requirements) {
-        requirements.length = 0;
-        clean.requirements.forEach(r => requirements.push(r));
-      }
-      if (clean.clientMeta) {
-        clientMeta = clean.clientMeta;
-        saveClientMeta();
-      }
-      if (clean.customClients) {
-        customClients = clean.customClients;
-      }
-      sessions.forEach(s => { s.status = deriveStatus(s.steps); });
-      recomputeNextId();
-      saveSessions();
-      saveStepLinks();
-      saveRequirements(); // was missing → restored report dates reverted on next reload
-      // Renée pickle state from the backup, then re-baseline so any completed
-      // sessions the backup didn't already mark can't pay out on this import.
-      if (clean.brineInventory) brineInventory = clean.brineInventory;
-      if (clean.pickleUnlocked) pickleUnlocked = clean.pickleUnlocked;
-      if (clean.pickleCurrent) pickleCurrent = clean.pickleCurrent;
-      if (clean.rewardedSessions) rewardedSessions = new Set(clean.rewardedSessions);
-      if (!pickleUnlocked.includes(STARTER_FORM)) pickleUnlocked.unshift(STARTER_FORM);
-      if (!pickleUnlocked.includes(pickleCurrent)) pickleCurrent = STARTER_FORM;
-      baselineRewardedSessions();
-      savePickleState();
-      renderAll();
-      showAlertModal('Backup restored', 'Data restored successfully from <strong>' + esc(file.name) + '</strong>.');
+      clean = normalizeImportedData(JSON.parse(e.target.result));
     } catch(err) {
       showAlertModal('Import failed', 'Could not read the backup file. Make sure it&#39;s a valid .json export from this tracker.');
+      return;
     }
+    // Preview the swap and require confirmation — import replaces everything.
+    const newS = clean.sessions ? clean.sessions.length : sessions.length;
+    const newC = distinctClientCount(clean.sessions || sessions, clean.clientMeta || clientMeta);
+    const curS = sessions.length;
+    const curC = distinctClientCount(sessions, clientMeta);
+    showConfirmModal('Replace everything with this backup?',
+      'This backup has <strong>' + newS + ' sessions</strong> and <strong>' + newC + ' clients</strong>. ' +
+      'It will replace your current <strong>' + curS + ' sessions</strong> and <strong>' + curC + ' clients</strong>.<br><br>' +
+      'A snapshot of your current data is saved first, so you can undo this.',
+      'Replace', function () {
+        // Timestamped pre-import snapshot, kept so the swap is recoverable.
+        // safeSet NEVER throws — it returns false on failure (quota full is
+        // likeliest here: this is the app's single largest write). If it fails,
+        // the promised undo path does not exist, so say so and require a second
+        // explicit confirmation instead of importing on a false promise.
+        const snapshotSaved = safeSet('preImportSnapshot',
+          JSON.stringify({ at: new Date().toISOString(), data: backupData() }));
+        if (!snapshotSaved) {
+          showConfirmModal('Snapshot could not be saved',
+            'Your browser\'s storage is too full to keep a safety copy of the current data. ' +
+            'If you continue, this import <strong>cannot be undone</strong>.<br><br>' +
+            'Safer option: Cancel, then use ⬇ Save → Export to download the current data first.',
+            'Import without undo', function () { applyImport(clean, file.name, false); }, 'var(--error)');
+          return;
+        }
+        applyImport(clean, file.name, true);
+      }, 'var(--error)');
+  };
+  reader.onerror = function() {
+    showAlertModal('Import failed', 'The file could not be read from disk. Check that it still exists and try again.');
   };
   reader.readAsText(file);
   input.value = ''; // reset so same file can be re-imported
+}
+
+// Restore the snapshot taken right before the most recent import.
+function restorePreImportSnapshot() {
+  const raw = safeGet('preImportSnapshot');
+  if (!raw) { showAlertModal('Nothing to restore', 'There is no pre-import snapshot saved yet.'); return; }
+  let snap;
+  try { snap = JSON.parse(raw); } catch (e) { showAlertModal('Restore failed', 'The saved snapshot is unreadable.'); return; }
+  const when = snap.at ? new Date(snap.at).toLocaleString() : 'earlier';
+  showConfirmModal('Restore pre-import data?',
+    'This puts back the data from just before your last import (snapshot taken ' + esc(when) + '), replacing what\'s here now.',
+    'Restore', function () {
+      let clean;
+      try { clean = normalizeImportedData(snap.data); }
+      catch (e) { showAlertModal('Restore failed', 'The snapshot could not be validated.'); return; }
+      // Swap, don't delete: snapshot the CURRENT (post-import, possibly edited)
+      // state into the same slot before restoring, so this action is itself
+      // reversible — restoring twice toggles between the two datasets. The old
+      // behavior removed the only snapshot and then showed a message promising
+      // an undo path that no longer existed.
+      const swapSaved = safeSet('preImportSnapshot',
+        JSON.stringify({ at: new Date().toISOString(), data: backupData() }));
+      if (!swapSaved) safeRemove('preImportSnapshot'); // failed write: don't leave the stale one lying as if it were current
+      applyImport(clean, 'pre-import snapshot', swapSaved);
+    }, 'var(--primary)');
+}
+
+// ── Safety snapshots: persisted last-3 backup generations ─────────────────────
+// The delete dialogs promise recoverability, but ↩ Undo lives in memory and the
+// auto-backup file is a SINGLE slot rewritten ~1s after any change — before this
+// existed, a mistaken delete followed by a reload was unrecoverable, and the
+// backup file already agreed with the mistake. Now every destructive delete
+// first banks a full timestamped copy in localStorage, restorable across
+// reloads from ⬇ Save → ⏪ Restore snapshot.
+const SAFETY_SNAPSHOT_MAX = 3;
+
+function listSafetySnapshots() {
+  try { const v = JSON.parse(safeGet('safetySnapshots') || '[]'); return Array.isArray(v) ? v : []; }
+  catch (e) { return []; }
+}
+
+function pushSafetySnapshot(label) {
+  let snaps = listSafetySnapshots();
+  snaps.unshift({ at: new Date().toISOString(), label: String(label || '').slice(0, 80), data: backupData() });
+  snaps = snaps.slice(0, SAFETY_SNAPSHOT_MAX);
+  // Best effort: on a quota failure shed the oldest generation and retry, so a
+  // full store degrades to fewer snapshots rather than none at all.
+  while (snaps.length && !safeSet('safetySnapshots', JSON.stringify(snaps))) snaps.pop();
+  refreshSafetyBtn();
+}
+
+function refreshSafetyBtn() {
+  const b = document.getElementById('restore-safety-btn');
+  if (b) b.style.display = listSafetySnapshots().length ? 'block' : 'none';
+}
+
+function openSafetyRestore() {
+  const snaps = listSafetySnapshots();
+  if (!snaps.length) { showAlertModal('No snapshots', 'No safety snapshots exist yet — one is saved automatically before every delete.'); return; }
+  const rows = snaps.map((s, i) => {
+    const when = s.at ? new Date(s.at).toLocaleString() : '?';
+    const n = s.data && Array.isArray(s.data.sessions) ? s.data.sessions.length : '?';
+    return '<button type="button" data-restore-snap="' + i + '" style="display:block;width:100%;text-align:left;margin:0.3rem 0;padding:0.55rem 0.8rem;border:1px solid var(--divider);border-radius:8px;background:var(--surface-off2);color:var(--text);cursor:pointer;font-family:inherit;font-size:0.85rem">' +
+      '<strong>' + esc(when) + '</strong> — ' + esc(s.label || 'snapshot') + ' <span style="color:var(--muted)">(' + n + ' sessions)</span></button>';
+  }).join('');
+  showAlertModal('Restore a snapshot',
+    'Each snapshot is a full copy of your data, saved automatically right before a delete. Pick one to restore it.<br><br>' + rows, 'Close');
+}
+
+function restoreSafetySnapshot(i) {
+  const snaps = listSafetySnapshots();
+  const snap = snaps[i];
+  if (!snap) return;
+  const when = snap.at ? new Date(snap.at).toLocaleString() : 'earlier';
+  showConfirmModal('Restore this snapshot?',
+    'This replaces everything with the copy taken <strong>' + esc(when) + '</strong> (' + esc(snap.label || 'snapshot') + ').<br><br>' +
+    'A snapshot of your current data is banked first, so this is reversible.',
+    'Restore', function () {
+      let clean;
+      try { clean = normalizeImportedData(snap.data); }
+      catch (e) { showAlertModal('Restore failed', 'This snapshot could not be validated.'); return; }
+      pushSafetySnapshot('before restoring the ' + when + ' snapshot');
+      applyImport(clean, 'snapshot from ' + when, false);
+    }, 'var(--primary)');
+}
+
+// Last-resort reset offered by the render-failure banner. The old handler was a
+// bare localStorage.clear() — destroying the whole caseload to fix what might be
+// a cosmetic render bug, with no way back; a still-armed auto-backup would then
+// overwrite the on-disk backup file with seed data on the first post-reset edit.
+// This version: (1) stashes the full current dataset into the pre-import
+// snapshot slot, so the existing "↩ Restore pre-import snapshot" menu item can
+// bring everything back after the reset; (2) disarms the auto-backup file handle
+// so the reset session cannot clobber the last good backup until the user
+// re-picks the file; (3) only then clears and reloads.
+async function emergencyReset() {
+  let snap = '';
+  try { snap = JSON.stringify({ at: new Date().toISOString(), data: backupData() }); } catch (e) {}
+  try { localStorage.clear(); } catch (e) {}
+  if (snap) safeSet('preImportSnapshot', snap);   // storage just emptied, so this fits
+  try { await idbSet('backupHandle', null); } catch (e) {}
+  location.reload();
 }
 
 function startBottleneckSession() {
@@ -3141,6 +3610,7 @@ function startBottleneckSession() {
 
 
 function launchConfetti() {
+  if (prefersReducedMotion()) return;
   const container = document.getElementById('confetti-container');
   if (!container) return;
   const colors = ['#6C63FF','#43D9AD','#FFD166','#EF476F','#06D6A0','#118AB2'];
@@ -3175,15 +3645,21 @@ function coachMicroDone(id) {
   clearCoachTimer();
   const shell = document.getElementById('coach-shell');
   if (!shell) return;
-  // Celebration screen, then auto-redirect to 'stuck' after 2.5s
-  shell.innerHTML = `<div class="coach-wrap coach-screen" style="align-items:center;justify-content:center;text-align:center;min-height:340px">
+  // Celebration screen, then auto-redirect to 'stuck' after 2.8s
+  shell.innerHTML = `<div class="coach-wrap coach-screen" id="coach-celebrate-screen" style="align-items:center;justify-content:center;text-align:center;min-height:340px">
     <div class="coach-celebrate-emoji">🎉</div>
     <div class="coach-celebrate-confetti" id="coach-confetti-local"></div>
     <div style="font-size:1.5rem;font-weight:700;margin:0.5rem 0">Nice work!</div>
     <div style="color:var(--muted);margin-bottom:1.5rem">Step marked complete.</div>
     <button class="c-btn c-btn-primary" onclick="coachFlow('stuck')">Keep going →</button>
   </div>`;
-  setTimeout(() => { if (document.getElementById('confetti-container')) coachFlow('stuck'); }, 2800);
+  // Tracked + guarded on the celebration screen ITSELF: the old guard checked
+  // the permanent #confetti-container, so the redirect always fired — hijacking
+  // whatever coach screen the user had navigated to in the meantime.
+  coachRedirectTimeout = setTimeout(() => {
+    coachRedirectTimeout = null;
+    if (document.getElementById('coach-celebrate-screen')) coachFlow('stuck');
+  }, 2800);
 }
 
 function coachCountdownThenStart(seconds) {
@@ -3192,14 +3668,16 @@ function coachCountdownThenStart(seconds) {
   btn.disabled = true;
   let count = 3;
   btn.textContent = count + '...';
-  const cd = setInterval(() => {
+  clearCoachTimer();   // a second click or a leftover countdown must not stack
+  coachCountdownInterval = setInterval(() => {
     count--;
     if (count > 0) {
       btn.textContent = count + '...';
     } else {
-      clearInterval(cd);
+      clearInterval(coachCountdownInterval); coachCountdownInterval = null;
       btn.textContent = 'GO!';
-      setTimeout(() => {
+      coachCountdownTimeout = setTimeout(() => {
+        coachCountdownTimeout = null;
         coachBeatTimer(seconds);
       }, 400);
     }
@@ -3209,6 +3687,7 @@ function coachCountdownThenStart(seconds) {
 function coachBeatTimer(seconds) {
   const wrap = document.querySelector('.coach-wrap');
   if (!wrap) return;
+  clearCoachTimer();   // never overwrite a live interval — the old one leaked and kept ticking
   // remove old timer strip if any
   const old = document.getElementById('coach-timer-strip');
   if (old) old.remove();
@@ -3248,16 +3727,31 @@ function coachCelebrate() {
 
 // ── VIEW SWITCHING ────────────────────────────────────────────────────
 function switchView(name) {
+  if (name !== 'coach') clearCoachTimer();   // leaving Coach abandons its timers
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   const names = ['dashboard','sessions','requirements','coach','renee','help'];
-  document.querySelectorAll('.nav-main-tabs .nav-tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.nav-main-tabs .nav-tab').forEach((t, i) => {
+    const active = names[i] === name;
+    t.classList.toggle('active', active);
+    // Expose the active view to assistive tech — the CSS class alone is invisible to it.
+    if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+  });
   renderAll();
 }
 
 
 // ── Client dropdown helpers ───────────────────────────────────────────
 let customClients = []; // extra clients added at runtime
+
+// The seed roster. Deleting one of these sets a `deleted` tombstone in
+// clientMeta (instead of nothing), so the hardcoded list can't resurrect it in
+// the Add-Session dropdown; re-adding the code revives it.
+const BUILTIN_CLIENTS = ['PCH-B2','PCH-C4','PCH-R1','PCH-W3','PCH4'];
+function isDeletedClient(c) { return !!(clientMeta[c] && clientMeta[c].deleted); }
+function reviveClient(c) {
+  if (clientMeta[c] && clientMeta[c].deleted) { delete clientMeta[c].deleted; saveClientMeta(); }
+}
 
 function handleClientSelect(sel) {
   const newInput = document.getElementById('f-client-new');
@@ -3275,7 +3769,7 @@ function getClientValue() {
   if (sel.value === '__new__') {
     // Uppercase like clientManagerNewClient does — client matching is
     // case-sensitive, so "pch1" must not become a separate client from "PCH1".
-    return document.getElementById('f-client-new').value.trim().toUpperCase();
+    return document.getElementById('f-client-new').value.trim().toUpperCase().slice(0, 20);
   }
   return sel.value;
 }
@@ -3285,7 +3779,7 @@ function refreshClientDropdown() {
   if (!sel) return;
   // Gather unique existing clients from sessions
   const existing = allClientCodes ? allClientCodes(false) : [...new Set(sessions.map(s => s.client))].sort();
-  const builtIn = ['PCH-B2','PCH-C4','PCH-R1','PCH-W3','PCH4'].filter(c => !(clientMeta[c] && clientMeta[c].archived));
+  const builtIn = BUILTIN_CLIENTS.filter(c => !(clientMeta[c] && (clientMeta[c].archived || clientMeta[c].deleted)));
   const all = [...new Set([...builtIn, ...existing, ...customClients.filter(c => !(clientMeta[c] && clientMeta[c].archived))])].sort();
   const current = sel.value;
   sel.innerHTML = '<option value="">— Select client —</option>' +
@@ -3315,33 +3809,60 @@ function closeAddForm() {
 
 function submitAddSession() {
   const client = getClientValue();
-  let visit = document.getElementById('f-visit').value.trim();
-  if (visit && !/^visit\s/i.test(visit)) visit = 'Visit ' + visit;
+  // Normalise the visit label to canonical "Visit N". The old prefix test
+  // required whitespace, so "Visit5" became "Visit Visit5", and a lowercase
+  // "visit 5" was stored unnormalised — creating labels the cell editor and
+  // duplicate check then disagreed about.
+  let core = document.getElementById('f-visit').value.trim();
+  let m;
+  while ((m = core.match(/^visit\s*/i))) core = core.slice(m[0].length);  // strip any stack of "visit" prefixes
+  const visitNum = parseInt(core.replace(/\D+/g, ''), 10);
   const appt   = document.getElementById('f-date').value;
-  if (!client || !visit || !appt) {
+  if (!client || !core || !appt) {
     showAlertModal('Missing information', 'Please fill in Client, Visit #, and Session Date.');
     return;
   }
+  // Same rules as the visit cell editor, so the two doors accept the same values.
+  if (!Number.isFinite(visitNum) || visitNum < 1 || visitNum > 9999) {
+    showAlertModal('Invalid visit number', 'Enter a visit number from 1 to 9999 (e.g. 12).');
+    return;
+  }
+  const visit = 'Visit ' + visitNum;
+  // Adding a session under an ARCHIVED client's code would create hidden work —
+  // archived clients are filtered out of the dashboard, All Sessions and Coach,
+  // so the new session would silently vanish. Offer to unarchive first.
+  if (isArchived(client)) {
+    showConfirmModal('Unarchive ' + client + '?',   // title is textContent — esc() here would show literal entities
+      esc(client) + ' is archived, so a new session would be hidden from Home, All Sessions and Coach. Unarchive this client and add the session?',
+      'Unarchive & add', function () {
+        pushUndo({ type:'client-archive', client, prev: clientMeta[client].archived });
+        clientMeta[client].archived = false;
+        saveClientMeta();
+        submitAddSession();   // form values are still populated; now it proceeds
+      }, 'var(--primary)');
+    return;
+  }
   // Duplicate check
-  const visitNorm = (/^visit\s/i.test(visit) ? visit : 'Visit ' + visit).toLowerCase();
-  const duplicate = sessions.find(s => s.client === client && s.visit.toLowerCase() === visitNorm);
+  // `visit` is already canonical "Visit N"; compare case-insensitively against
+  // whatever older free-form labels may exist in the data.
+  const duplicate = sessions.find(s => s.client === client && s.visit.toLowerCase() === visit.toLowerCase());
   if (duplicate) {
-    showAlertModal('Duplicate session',
-      esc(client) + ' ' + esc(visitNorm.charAt(0).toUpperCase() + visitNorm.slice(1)) + ' already exists.');
+    showAlertModal('Duplicate session', esc(client) + ' ' + esc(visit) + ' already exists.');
     return;
   }
   // Is this a brand-new client the add is about to create? Capture it before
   // mutating, so undo can remove the client it auto-created (not a pre-existing one).
   const isNewClient = !clientMeta[client] &&
-      !['PCH-B2','PCH-C4','PCH-R1','PCH-W3','PCH4'].includes(client) &&
+      !BUILTIN_CLIENTS.includes(client) &&
       !sessions.some(s => s.client === client) &&
       !requirements.some(r => r.client === client);
   // Save new client for future use this session
   if (!customClients.includes(client) &&
-      !['PCH-B2','PCH-C4','PCH-R1','PCH-W3','PCH4'].includes(client) &&
+      !BUILTIN_CLIENTS.includes(client) &&
       !sessions.find(s => s.client === client)) {
     customClients.push(client);
   }
+  reviveClient(client);   // typing a deleted client's code brings it back
   // Clients added here must behave like ones added in the Client Manager:
   // persisted in clientMeta and given report rows so they appear in Reports.
   if (!clientMeta[client]) {
@@ -3349,13 +3870,15 @@ function submitAddSession() {
     saveClientMeta();
   }
   ensureReportRowsForClient(client);
+  const newId = allocSessionId();
   sessions.push({
-    id: nextId++,
+    id: newId,
     client, appt, visit,
     status: 'Upload Placeholder Note',
-    steps: [0,0,0,0,0,0,0]
+    steps: [0,0,0,0,0,0,0],
+    notes: ''
   });
-  pushUndo({ type: 'add', id: nextId - 1, newClient: isNewClient ? client : null });
+  pushUndo({ type: 'add', id: newId, newClient: isNewClient ? client : null });
   saveSessions();
   closeAddForm();
   renderAll();
@@ -3385,7 +3908,10 @@ function sortSessions(arr) {
     if (dashSortCol === 'client') {
       va = a.client.toLowerCase(); vb = b.client.toLowerCase();
     } else if (dashSortCol === 'visit') {
-      va = a.visit.toLowerCase(); vb = b.visit.toLowerCase();
+      // Numeric, not lexicographic — otherwise 'Visit 2' sorts after 'Visit 11'.
+      va = parseInt(String(a.visit).replace(/\D+/g, ''), 10); if (!Number.isFinite(va)) va = -1;
+      vb = parseInt(String(b.visit).replace(/\D+/g, ''), 10); if (!Number.isFinite(vb)) vb = -1;
+      if (va === vb) { va = a.visit.toLowerCase(); vb = b.visit.toLowerCase(); }
     } else if (dashSortCol === 'date') {
       va = a.appt; vb = b.appt;
     } else if (dashSortCol === 'steps') {
@@ -3697,10 +4223,25 @@ function renderRenee() {
 let cellEditCtx = null;
 const CELL_LABELS = { appt:'Session date', visit:'Visit number', notes:'Notes' };
 
-function closeCellEditor() {
+// `restoreFocus` returns keyboard focus to the cell that opened the editor —
+// used for Escape/Cancel/Save. Outside-click closes WITHOUT it, since the user
+// has deliberately moved their pointer (and focus) elsewhere.
+function closeCellEditor(restoreFocus) {
   const p = document.getElementById('cell-pop');
   if (p) p.remove();
+  const anchor = cellEditCtx && cellEditCtx.anchor;
   cellEditCtx = null;
+  if (restoreFocus && anchor && document.contains(anchor)) anchor.focus();
+}
+
+// After a save, renderAll() rebuilds the table and destroys the original anchor
+// element — re-find the equivalent cell in the fresh DOM and focus that instead.
+function focusCellTrigger(id, field) {
+  const row = document.querySelector('tr[data-id="' + id + '"]');
+  if (!row) return;
+  const el = field === 'notes' ? row.querySelector('.note-cell')
+           : row.querySelectorAll('.cell-edit')[field === 'visit' ? 0 : 1];
+  if (el) el.focus();
 }
 
 function openCellEditor(id, field, anchor) {
@@ -3713,10 +4254,10 @@ function openCellEditor(id, field, anchor) {
     control = '<input id="cell-pop-input" type="date" value="' + esc(s.appt || '') + '">';
   } else if (field === 'visit') {
     const n = parseInt(String(s.visit || '').replace(/\D+/g, ''), 10);
-    control = '<input id="cell-pop-input" type="number" min="1" step="1" value="' +
+    control = '<input id="cell-pop-input" type="number" min="1" max="9999" step="1" value="' +
               (Number.isFinite(n) ? n : '') + '" placeholder="e.g. 12">';
   } else {
-    control = '<textarea id="cell-pop-input" placeholder="Anything worth remembering about this session…">' +
+    control = '<textarea id="cell-pop-input" maxlength="2000" placeholder="Anything worth remembering about this session…">' +
               esc(s.notes || '') + '</textarea>';
   }
 
@@ -3725,9 +4266,9 @@ function openCellEditor(id, field, anchor) {
   pop.innerHTML =
     '<div class="cell-pop-title">' + CELL_LABELS[field] + ' · ' + esc(s.client) + ' ' + esc(s.visit) + '</div>' +
     control +
-    (field === 'notes' ? '<div class="cell-pop-hint">Esc cancels · ⌘/Ctrl+Enter saves</div>' : '') +
+    (field === 'notes' ? '<div class="cell-pop-hint"><span id="cell-pop-count"></span> · Esc cancels · ⌘/Ctrl+Enter saves</div>' : '') +
     '<div class="cell-pop-row">' +
-      '<button type="button" onclick="closeCellEditor()">Cancel</button>' +
+      '<button type="button" onclick="closeCellEditor(true)">Cancel</button>' +
       '<button type="button" class="cell-pop-save" onclick="saveCellEditor()">Save</button>' +
     '</div>';
   document.body.appendChild(pop);
@@ -3739,14 +4280,22 @@ function openCellEditor(id, field, anchor) {
                      window.scrollX + vw - pop.offsetWidth - 12)) + 'px';
   pop.style.top  = (r.bottom + window.scrollY + 6) + 'px';
 
-  cellEditCtx = { id, field };
+  cellEditCtx = { id, field, anchor };
   const inp = document.getElementById('cell-pop-input');
   inp.focus();
   if (inp.select) inp.select();
   inp.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCellEditor(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCellEditor(true); }
     else if (e.key === 'Enter' && (field !== 'notes' || e.metaKey || e.ctrlKey)) { e.preventDefault(); saveCellEditor(); }
   });
+  // Live character counter, so the 2000-char cap is visible instead of a
+  // silent truncation surprise.
+  if (field === 'notes') {
+    const count = document.getElementById('cell-pop-count');
+    const tick = () => { if (count) count.textContent = inp.value.length + ' / 2000'; };
+    inp.addEventListener('input', tick);
+    tick();
+  }
 }
 
 function saveCellEditor() {
@@ -3764,30 +4313,47 @@ function saveCellEditor() {
     next = inp.value;
   } else if (field === 'visit') {
     const n = parseInt(inp.value, 10);
-    if (!Number.isFinite(n) || n < 1) {
-      showAlertModal('Invalid visit number', 'Enter a whole number of 1 or higher.'); return;
+    if (!Number.isFinite(n) || n < 1 || n > 9999) {
+      showAlertModal('Invalid visit number', 'Enter a whole number from 1 to 9999.'); return;
     }
     next = 'Visit ' + n;
+    // Same duplicate rule the Add form enforces — editing was a back door that
+    // could silently create a second "Visit N" for the same client.
+    const dup = sessions.find(x => x.client === s.client && x.id !== s.id &&
+                                   String(x.visit).toLowerCase() === next.toLowerCase());
+    if (dup) {
+      showAlertModal('Duplicate session', esc(s.client) + ' ' + esc(next) + ' already exists.'); return;
+    }
   } else {
     next = String(inp.value).slice(0, 2000);
   }
 
   const prev = s[field] === undefined ? '' : s[field];
-  if (next === prev) { closeCellEditor(); return; }   // nothing actually changed
+  if (next === prev) { closeCellEditor(true); return; }   // nothing actually changed
   pushUndo({ type:'session-field', id, field, prev });
   s[field] = next;
   saveSessions();
   closeCellEditor();
   renderAll();
+  focusCellTrigger(id, field);   // the re-render destroyed the old anchor — refocus its replacement
 }
 
-// Dismiss on outside click / Escape from anywhere.
+// Dismiss on outside click / Escape from anywhere. Clicks inside the confirm/
+// alert bar do NOT count as "outside": a validation alert sits on top of the
+// editor, and acknowledging it must not destroy the editor and the typed input.
 document.addEventListener('mousedown', e => {
   const p = document.getElementById('cell-pop');
-  if (p && !p.contains(e.target) && !e.target.closest('.cell-edit, .note-cell')) closeCellEditor();
+  if (p && !p.contains(e.target) && !e.target.closest('.cell-edit, .note-cell, #confirm-bar')) closeCellEditor();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('cell-pop')) { e.stopPropagation(); closeCellEditor(); }
+  if (e.key !== 'Escape' || !document.getElementById('cell-pop')) return;
+  // Layered close: when an alert/confirm bar is stacked on top of the editor,
+  // Escape must close the TOP layer (the bar, via the bubble-phase handler),
+  // not the editor underneath it.
+  const bar = document.getElementById('confirm-bar');
+  if (bar && bar.style.display !== 'none') return;
+  e.stopPropagation();
+  closeCellEditor(true);
 }, true);
 
 // ── Roaming Renée: a gentle, click-transparent sprite of the current pickle that
@@ -3896,6 +4462,13 @@ function reneeHopTo(t) {
   const dx = t.x - sx, dy = t.y - sy;
   const dist = Math.hypot(dx, dy);
   if (dist < 2) { reneePerchEl = t.el; reneePerchDX = t.dx; return; }
+
+  // Reduced motion: no flight arc — appear at the destination.
+  if (prefersReducedMotion()) {
+    reneeSetPos(t.x, t.y);
+    reneePerchEl = t.el; reneePerchDX = t.dx;
+    return;
+  }
 
   const lift = Math.min(115, 26 + dist * 0.30);
   const dur  = Math.max(380, Math.min(1250, 240 + dist * 1.1));
@@ -4016,26 +4589,19 @@ safeSet('appVersion', APP_VERSION);
 safeRemove('pickleGame');
 safeRemove('reneeCucumberStartFixV1');
 
-// ── One-time caseload reset ──────────────────────────────────────────────────
-// Saved data normally wins over the bundled seed, so shipping a new roster isn't
-// enough on its own — the browser would keep serving the old demo sessions. This
-// clears them exactly once per SEED_VERSION so the real caseload below takes.
-// It deliberately leaves the Renée collection (brine, unlocked forms, current)
-// alone, but DOES drop rewardedSessions: session ids are renumbered here, and a
-// stale id would otherwise silently block a genuine future reward.
-const SEED_VERSION = '2026-07-14-caseload-v2-trimmed';
-if (safeGet('seedVersion') !== SEED_VERSION) {
-  ['sessions','requirements','clientMeta','customClients','rewardedSessions'].forEach(k => safeRemove(k));
-  safeSet('seedVersion', SEED_VERSION);
-}
+// NOTE: no automatic "seed reset" here. Saved localStorage is authoritative — the
+// bundled sessions only bootstrap a browser that has nothing saved yet. Wiping
+// saved data on a version change would silently destroy a real caseload (and a
+// reconnected Drive would then upload the emptied state over a good backup).
+// Caseload replacement is deliberately a manual, confirmed action via Import.
 
 // Load persisted step changes
 loadPersistedSessions();
 recomputeNextId();
-// Fixed institutional links — always set, since these URLs don't vary by user.
-// Index matches STEP_NAMES: 3 = Time 2 Track, 6 = Note to Epic.
+// Time 2 Track (index 3) is genuinely fixed/auto — always pinned. The Note-to-Epic
+// link (index 6) is only a DEFAULT (see STEP_SUGGESTIONS); it's user-editable and
+// must NOT be force-overwritten here, or edits/removals would silently revert.
 stepLinks[3] = 'https://app.time2track.com/activities';
-stepLinks[6] = 'https://remote.ochin.info/logon/LogonPoint/tmindex.html';
 saveStepLinks();
 // Recompute status from steps for all sessions
 sessions.forEach(s => { s.status = deriveStatus(s.steps); });
@@ -4050,11 +4616,15 @@ loadPickleState();
 baselineRewardedSessions();
 loadReneeRoam();
 if (reneeRoamEnabled) startReneeRoam();
+refreshSnapshotBtn();
+refreshSafetyBtn();
 try {
   renderAll();
 } catch(e) {
   console.error('renderAll failed:', e);
-  document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;padding:1rem;background:#e55;color:#fff;z-index:9999;font-family:sans-serif">App error — <button onclick="try{localStorage.clear()}catch(e){};location.reload()" style="background:#fff;color:#e55;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-weight:700">Click here to reset</button></div>';
+  document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;padding:1rem;background:#e55;color:#fff;z-index:9999;font-family:sans-serif;line-height:2">App error — your data is intact. Download a backup before doing anything else. ' +
+    '<button onclick="exportData()" style="background:#fff;color:#e55;border:none;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-weight:700">⬇ Download backup</button> ' +
+    '<button onclick="emergencyReset()" style="background:none;color:#fff;border:1px solid #fff;padding:0.3rem 0.8rem;border-radius:4px;cursor:pointer;font-weight:700" title="Keeps a restorable snapshot, then resets the app">Erase saved data &amp; reset</button></div>';
 }
 updateUndoBtn();
 
@@ -4079,6 +4649,8 @@ document.addEventListener('keydown', e => {
 document.addEventListener('click', e => {
   const sw = e.target.closest('[data-pick-color]');
   if (sw) { applyClientColor(sw.dataset.client, sw.dataset.pickColor); return; }
+  const snapBtn = e.target.closest('[data-restore-snap]');
+  if (snapBtn) { closeConfirmModal(); restoreSafetySnapshot(parseInt(snapBtn.dataset.restoreSnap, 10)); return; }
   const el = e.target.closest('[data-coach-focus],[data-client-action]');
   if (!el) return;
   if (el.dataset.coachFocus !== undefined) { coachFocusClient(el.dataset.coachFocus); return; }
@@ -4137,14 +4709,14 @@ document.addEventListener('click', e => {
 
 <!-- Drive Settings Modal -->
 <div id="drive-settings-overlay" style="visibility:hidden;opacity:0;pointer-events:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2400" onclick="closeDriveSettings()"></div>
-<div id="drive-settings-modal" style="visibility:hidden;opacity:0;pointer-events:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2401;background:var(--surface);border:1px solid var(--divider);border-radius:16px;padding:1.75rem;width:min(480px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25)">
+<div id="drive-settings-modal" role="dialog" aria-modal="true" aria-label="Google Drive settings" style="visibility:hidden;opacity:0;pointer-events:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2401;background:var(--surface);border:1px solid var(--divider);border-radius:16px;padding:1.75rem;width:min(480px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25)">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
     <div style="font-weight:700;font-size:1.1rem">🔗 Connect Google Drive</div>
     <button onclick="closeDriveSettings()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted)">✕</button>
   </div>
   <div style="display:flex;flex-direction:column;gap:0.85rem;font-size:0.9rem;line-height:1.6">
     <p style="margin:0;color:var(--muted)">Paste the <strong>OAuth Client ID</strong> from your Google Cloud project. This is saved only in your browser — never sent anywhere except Google.</p>
-    <input id="drive-settings-input" type="text" placeholder="987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com" value="987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com" style="width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:0.85rem">
+    <input id="drive-settings-input" type="text" aria-label="Google OAuth Client ID" placeholder="987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com" value="987828261388-23064g88qdfl9llq75hhelpf9es0b360.apps.googleusercontent.com" style="width:100%;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:0.85rem">
     <div style="background:var(--surface-off2);border-radius:10px;padding:0.85rem;font-size:0.82rem;color:var(--muted)">
       <div style="font-weight:700;margin-bottom:0.35rem;color:var(--text)">Don't have one yet?</div>
       You'll need to create it once in <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" style="color:var(--primary)">Google Cloud Console</a> — see the setup guide for step-by-step instructions. It takes about 10 minutes.

@@ -646,16 +646,20 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 .sort-arrow.sort-asc::after  { content: ' ▲'; }
 .sort-arrow.sort-desc::after { content: ' ▼'; }
 
-/* Per-step column header on All Sessions: a sortable label + a select-all toggle */
-.step-th { white-space:nowrap; }
+/* Per-step column header on All Sessions: a sortable label above a centered
+   select-all toggle. Stacking keeps the column as narrow as the label and lines
+   the header up over the centered step dots below. */
+.step-th { white-space:nowrap; text-align:center; vertical-align:middle; }
+.step-th-inner { display:inline-flex; flex-direction:column; align-items:center; gap:3px; line-height:1.15; }
 .step-lbl { cursor:pointer; user-select:none; }
 .step-lbl:hover { color: var(--primary); }
+.step-th .sort-arrow { width:auto; }   /* don't reserve a full em in these narrow columns */
 .col-all {
   display:inline-flex; align-items:center; justify-content:center;
-  margin-left:0.28rem; width:1.2em; height:1.2em; padding:0;
+  width:1.25em; height:1.25em; padding:0;
   border:1px solid var(--border); border-radius:4px;
   background:transparent; color:var(--muted);
-  font-size:0.72rem; line-height:1; cursor:pointer; vertical-align:middle;
+  font-size:0.72rem; line-height:1; cursor:pointer;
 }
 .col-all:hover { border-color:var(--primary); color:var(--primary); background:var(--surface-off); }
 .col-all:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
@@ -958,13 +962,13 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
           <th class="sortable-th" tabindex="0" onclick="setAllSort('visit')" id="th-all-visit">Visit <span class="sort-arrow"></span></th>
           <th class="sortable-th" tabindex="0" onclick="setAllSort('date')" id="th-all-date">Appt Date <span class="sort-arrow"></span></th>
           <th class="sortable-th" tabindex="0" onclick="setAllSort('status')" id="th-all-status">Status <span class="sort-arrow"></span></th>
-          <th class="step-th" id="th-all-step0"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step0')" title="Place Holder Note — click to sort by this step">PH</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(0)" title="Toggle Place Holder Note for every session shown" aria-label="Select all Place Holder Note">✓</button></th>
-          <th class="step-th" id="th-all-step1"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step1')" title="Disposition List — click to sort by this step">Disp</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(1)" title="Toggle Disposition List for every session shown" aria-label="Select all Disposition List">✓</button></th>
-          <th class="step-th" id="th-all-step2"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step2')" title="Zoom — click to sort by this step">Zoom</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(2)" title="Toggle Zoom for every session shown" aria-label="Select all Zoom">✓</button></th>
-          <th class="step-th" id="th-all-step3"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step3')" title="Time 2 Track — click to sort by this step">T2T</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(3)" title="Toggle Time 2 Track for every session shown" aria-label="Select all Time 2 Track">✓</button></th>
-          <th class="step-th" id="th-all-step4"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step4')" title="Supervisor Log — click to sort by this step">S.Log</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(4)" title="Toggle Supervisor Log for every session shown" aria-label="Select all Supervisor Log">✓</button></th>
-          <th class="step-th" id="th-all-step5"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step5')" title="Note in Review — click to sort by this step">Review</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(5)" title="Toggle Note in Review for every session shown" aria-label="Select all Note in Review">✓</button></th>
-          <th class="step-th" id="th-all-step6"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step6')" title="Note to Epic — click to sort by this step">Epic</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(6)" title="Toggle Note to Epic for every session shown" aria-label="Select all Note to Epic">✓</button></th>
+          <th class="step-th" id="th-all-step0"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step0')" title="Place Holder Note — click to sort by this step">PH<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(0)" title="Select all: Place Holder Note for every session shown" aria-label="Select all Place Holder Note">✓</button></div></th>
+          <th class="step-th" id="th-all-step1"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step1')" title="Disposition List — click to sort by this step">Disp<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(1)" title="Select all: Disposition List for every session shown" aria-label="Select all Disposition List">✓</button></div></th>
+          <th class="step-th" id="th-all-step2"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step2')" title="Zoom — click to sort by this step">Zoom<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(2)" title="Select all: Zoom for every session shown" aria-label="Select all Zoom">✓</button></div></th>
+          <th class="step-th" id="th-all-step3"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step3')" title="Time 2 Track — click to sort by this step">T2T<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(3)" title="Select all: Time 2 Track for every session shown" aria-label="Select all Time 2 Track">✓</button></div></th>
+          <th class="step-th" id="th-all-step4"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step4')" title="Supervisor Log — click to sort by this step">S.Log<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(4)" title="Select all: Supervisor Log for every session shown" aria-label="Select all Supervisor Log">✓</button></div></th>
+          <th class="step-th" id="th-all-step5"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step5')" title="Note in Review — click to sort by this step">Review<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(5)" title="Select all: Note in Review for every session shown" aria-label="Select all Note in Review">✓</button></div></th>
+          <th class="step-th" id="th-all-step6"><div class="step-th-inner"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step6')" title="Note to Epic — click to sort by this step">Epic<span class="sort-arrow"></span></span><button class="col-all" onclick="bulkStep(6)" title="Select all: Note to Epic for every session shown" aria-label="Select all Note to Epic">✓</button></div></th>
           <th>Notes</th>
           <th></th>
         </tr></thead>
@@ -2715,7 +2719,7 @@ function renderAllSessions() {
           <td><span class="cell-edit" tabindex="0" role="button" title="Click to edit the visit number" onclick="openCellEditor(${s.id},'visit',this)">${esc(s.visit)}</span></td>
           <td><span class="cell-edit" tabindex="0" role="button" title="Click to edit the session date" onclick="openCellEditor(${s.id},'appt',this)">${esc(fmtDate(s.appt))}</span></td>
           <td>${statusBadge(s.status)}</td>
-          ${s.steps.map((v,i)=>`<td style="padding:0.55rem 0.4rem"><span class="dot-wrap"><span class="dot ${v?'done':'pending'}" tabindex="0" role="button" aria-label="${STEP_NAMES[i]} — ${v ? 'done' : 'not done'}" onclick="toggleStepInline(${s.id},${i},this)"></span><span class="tip">${STEP_NAMES[i]}</span></span></td>`).join('')}
+          ${s.steps.map((v,i)=>`<td style="padding:0.55rem 0.4rem;text-align:center"><span class="dot-wrap"><span class="dot ${v?'done':'pending'}" tabindex="0" role="button" aria-label="${STEP_NAMES[i]} — ${v ? 'done' : 'not done'}" onclick="toggleStepInline(${s.id},${i},this)"></span><span class="tip">${STEP_NAMES[i]}</span></span></td>`).join('')}
           <td>${noteCellHtml(s)}</td>
           <td><button class="del-btn" onclick="doDelete(${s.id})" title="Delete">✕</button></td>
         </tr>`;

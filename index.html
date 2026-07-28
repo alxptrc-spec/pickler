@@ -2308,6 +2308,17 @@ function fmtDate(iso) {
   return `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`;
 }
 
+// Long, readable form used on the Home page: "Jul 28, 2026" (MMM D, YYYY).
+// String-based like fmtDate, so it's timezone-safe; falls back for odd input.
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDateLong(iso) {
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  const mi = parseInt(m,10) - 1;
+  if (!(mi >= 0 && mi < 12) || !y || !d) return fmtDate(iso);
+  return `${MONTHS_SHORT[mi]} ${parseInt(d,10)}, ${y}`;
+}
+
 
 
 
@@ -2644,7 +2655,7 @@ function sessionRow(s, showStepDots=true) {
   return `<tr data-id="${s.id}">
     <td><span class="client-code"${clientChipStyle(s.client)}>${esc(s.client)}</span></td>
     <td style="white-space:nowrap"><span class="cell-edit" tabindex="0" role="button" title="Click to edit the visit number" onclick="openCellEditor(${s.id},'visit',this)">${esc(s.visit)}</span></td>
-    <td style="white-space:nowrap"><span class="cell-edit" tabindex="0" role="button" title="Click to edit the session date" onclick="openCellEditor(${s.id},'appt',this)">${esc(fmtDate(s.appt))}</span></td>
+    <td style="white-space:nowrap"><span class="cell-edit" tabindex="0" role="button" title="Click to edit the session date" onclick="openCellEditor(${s.id},'appt',this)">${esc(fmtDateLong(s.appt))}</span></td>
     ${showStepDots?`<td>${statusBadge(s.status, s.id)}</td><td><div class="steps">${stepsHtml(s.steps,s.id,true)}</div></td>`:''}
     <td>${noteCellHtml(s)}</td>
     <td><button class="del-btn" onclick="doDelete(${s.id})" title="Delete session">✕</button></td>

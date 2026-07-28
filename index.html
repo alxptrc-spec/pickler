@@ -646,6 +646,20 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 .sort-arrow.sort-asc::after  { content: ' ▲'; }
 .sort-arrow.sort-desc::after { content: ' ▼'; }
 
+/* Per-step column header on All Sessions: a sortable label + a select-all toggle */
+.step-th { white-space:nowrap; }
+.step-lbl { cursor:pointer; user-select:none; }
+.step-lbl:hover { color: var(--primary); }
+.col-all {
+  display:inline-flex; align-items:center; justify-content:center;
+  margin-left:0.28rem; width:1.2em; height:1.2em; padding:0;
+  border:1px solid var(--border); border-radius:4px;
+  background:transparent; color:var(--muted);
+  font-size:0.72rem; line-height:1; cursor:pointer; vertical-align:middle;
+}
+.col-all:hover { border-color:var(--primary); color:var(--primary); background:var(--surface-off); }
+.col-all:focus-visible { outline:2px solid var(--primary); outline-offset:1px; }
+
 
 /* ── Client management (inline in the Client Reports grid) ───────────── */
 .client-archived-pill { display:inline-block; margin-left:0.5rem; padding:0.05rem 0.5rem; border-radius:var(--r-full); font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; background:var(--warning-hl); color:var(--warning); vertical-align:middle; }
@@ -692,6 +706,15 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 .renee-btn-unlock:disabled { background:var(--surface-off2); color:var(--muted); cursor:not-allowed; }
 .renee-btn-select { background:var(--surface-off2); color:var(--text); border:1px solid var(--divider); }
 .renee-btn-current { background:none; color:var(--success); border:1px solid var(--success); cursor:default; }
+/* Drag-and-drop: draggable inventory chips, drop-target locked cards, green "ready" button */
+.brine-chip.brine-draggable { cursor:grab; }
+.brine-chip.brine-draggable:active { cursor:grabbing; }
+.brine-chip.brine-draggable:hover { border-color:var(--primary); }
+.renee-card.renee-drop-hover { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary) inset; }
+.renee-cost.renee-cost-filled { cursor:pointer; }
+.renee-cost.renee-cost-filled:hover { border-color:var(--error); color:var(--error); }
+.renee-btn-ready { background:var(--success); color:#fff; cursor:pointer; }
+.renee-drop-hint { font-size:0.78rem; color:var(--muted); margin-top:0.6rem; }
 @media (max-width:700px){ .brine-grid { grid-template-columns:repeat(2,1fr); } .renee-current { flex-direction:column; text-align:center; } }
 /* Roaming Renée — hops around and lands ON things (cards, rows, calendar cells).
    Three transform layers, so position / facing / squash never fight each other:
@@ -703,8 +726,20 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 #renee-roamer .renee-roamer-inner img { width:100%; height:100%; object-fit:contain; display:block; transform-origin:50% 92%; filter:drop-shadow(0 4px 5px rgba(0,0,0,0.28)); animation:reneeBob 2.9s ease-in-out infinite; }
 #renee-roamer.renee-flying  .renee-roamer-inner img { animation:none; transform:scale(0.93,1.10); }  /* stretched mid-air */
 #renee-roamer.renee-landing .renee-roamer-inner img { animation:reneeSquash .32s ease-out; }
+#renee-roamer.renee-sixseven .renee-roamer-inner img { animation:reneeSixSeven 1.6s ease-in-out both; }
 @keyframes reneeBob    { 0%,100%{transform:scale(1,1) translateY(0)} 50%{transform:scale(1.02,0.98) translateY(-2px)} }
 @keyframes reneeSquash { 0%{transform:scale(1.20,0.78)} 45%{transform:scale(0.95,1.06)} 75%{transform:scale(1.02,0.98)} 100%{transform:scale(1,1)} }
+/* The "6–7" gesture: rock side to side like weighing hands, with a little shrug bob.
+   Pivots near the base (img transform-origin 50% 92%) so it reads as shifting weight. */
+@keyframes reneeSixSeven {
+  0%   { transform: rotate(0deg)   translateY(0);    }
+  10%  { transform: rotate(-16deg) translateY(-5px); }
+  27%  { transform: rotate(14deg)  translateY(-5px); }
+  44%  { transform: rotate(-13deg) translateY(-4px); }
+  61%  { transform: rotate(12deg)  translateY(-4px); }
+  78%  { transform: rotate(-7deg)  translateY(-2px); }
+  100% { transform: rotate(0deg)   translateY(0);    }
+}
 /* ── Editable cells (session date / visit #) + clipped notes ─────────────────── */
 .cell-edit { cursor:pointer; border-radius:5px; padding:0.1rem 0.3rem; margin:-0.1rem -0.3rem; border-bottom:1px dashed transparent; }
 .cell-edit:hover { background:var(--surface-off2); border-bottom-color:var(--primary); }
@@ -918,7 +953,21 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
         </select>
       </div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Client</th><th>Visit</th><th>Appt Date</th><th>Status</th><th title="Place Holder Note">PH</th><th title="Disposition List">Disp</th><th title="Zoom">Zoom</th><th title="Time 2 Track">T2T</th><th title="Supervisor Log">S.Log</th><th title="Note in Review">Review</th><th title="Note to Epic">Epic</th><th>Notes</th><th></th></tr></thead>
+        <thead><tr>
+          <th class="sortable-th" tabindex="0" onclick="setAllSort('client')" id="th-all-client">Client <span class="sort-arrow"></span></th>
+          <th class="sortable-th" tabindex="0" onclick="setAllSort('visit')" id="th-all-visit">Visit <span class="sort-arrow"></span></th>
+          <th class="sortable-th" tabindex="0" onclick="setAllSort('date')" id="th-all-date">Appt Date <span class="sort-arrow"></span></th>
+          <th class="sortable-th" tabindex="0" onclick="setAllSort('status')" id="th-all-status">Status <span class="sort-arrow"></span></th>
+          <th class="step-th" id="th-all-step0"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step0')" title="Place Holder Note — click to sort by this step">PH</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(0)" title="Toggle Place Holder Note for every session shown" aria-label="Select all Place Holder Note">✓</button></th>
+          <th class="step-th" id="th-all-step1"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step1')" title="Disposition List — click to sort by this step">Disp</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(1)" title="Toggle Disposition List for every session shown" aria-label="Select all Disposition List">✓</button></th>
+          <th class="step-th" id="th-all-step2"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step2')" title="Zoom — click to sort by this step">Zoom</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(2)" title="Toggle Zoom for every session shown" aria-label="Select all Zoom">✓</button></th>
+          <th class="step-th" id="th-all-step3"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step3')" title="Time 2 Track — click to sort by this step">T2T</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(3)" title="Toggle Time 2 Track for every session shown" aria-label="Select all Time 2 Track">✓</button></th>
+          <th class="step-th" id="th-all-step4"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step4')" title="Supervisor Log — click to sort by this step">S.Log</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(4)" title="Toggle Supervisor Log for every session shown" aria-label="Select all Supervisor Log">✓</button></th>
+          <th class="step-th" id="th-all-step5"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step5')" title="Note in Review — click to sort by this step">Review</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(5)" title="Toggle Note in Review for every session shown" aria-label="Select all Note in Review">✓</button></th>
+          <th class="step-th" id="th-all-step6"><span class="step-lbl" tabindex="0" role="button" onclick="setAllSort('step6')" title="Note to Epic — click to sort by this step">Epic</span><span class="sort-arrow"></span><button class="col-all" onclick="bulkStep(6)" title="Toggle Note to Epic for every session shown" aria-label="Select all Note to Epic">✓</button></th>
+          <th>Notes</th>
+          <th></th>
+        </tr></thead>
         <tbody id="all-tbody"></tbody>
       </table></div>
     </div>
@@ -1309,6 +1358,9 @@ function updateUndoBtn() {
     btn.title = 'Undo: report date change';
   } else if (top.type === 'session-field') {
     btn.title = 'Undo: ' + (CELL_LABELS[top.field] || 'session').toLowerCase() + ' change';
+  } else if (top.type === 'bulk-steps') {
+    const c = top.changes ? top.changes.length : 0;
+    btn.title = 'Undo: “' + (top.label || 'step') + '” for ' + c + ' session' + (c === 1 ? '' : 's');
   } else {
     btn.title = 'Undo last step change';
   }
@@ -1419,6 +1471,20 @@ function applySnap(snap) {
       s[snap.field] = snap.prev;
       saveSessions();
     }
+  } else if (snap.type === 'bulk-steps') {
+    // A column select-all: restore every affected session's steps at once,
+    // capturing the current state as the inverse so redo works too.
+    const inv = [];
+    snap.changes.forEach(ch => {
+      const s = sessions.find(x => x.id === ch.id);
+      if (s) {
+        inv.push({ id: s.id, steps: [...s.steps] });
+        s.steps = [...ch.steps];
+        s.status = deriveStatus(s.steps);
+      }
+    });
+    saveSessions();
+    inverse = { type: 'bulk-steps', label: snap.label, changes: inv };
   } else {
     // Legacy step toggle snapshot: {id, steps}
     const s = sessions.find(x => x.id === snap.id);
@@ -2612,6 +2678,21 @@ function renderDashboard() {
 }
 
 
+// The sessions shown on the All Sessions page under the current client / next-step
+// filters (before sorting). Shared by the table render and the column select-all,
+// so "all shown" means exactly the rows the user can see.
+function filteredAllSessions() {
+  const filterClient = (document.getElementById('all-filter-client') || {}).value || '';
+  const filterStep   = (document.getElementById('all-filter-step') || {}).value || '';
+  return sessions.filter(s => {
+    if (isArchived(s.client)) return false; // archived clients are hidden here
+    if (filterClient && s.client !== filterClient) return false;
+    if (filterStep === 'COMPLETE') return s.status === 'COMPLETE';
+    if (filterStep && s.status !== filterStep) return false;
+    return true;
+  });
+}
+
 function renderAllSessions() {
   // Refresh client dropdown
   const clientSel = document.getElementById('all-filter-client');
@@ -2621,18 +2702,11 @@ function renderAllSessions() {
     clientSel.innerHTML = '<option value="">All Clients</option>' +
       clients.map(c => `<option value="${esc(c)}"${c===cur?' selected':''}>${esc(c)}</option>`).join('');
   }
-  const filterClient = clientSel ? clientSel.value : '';
-  const filterStep   = (document.getElementById('all-filter-step') || {}).value || '';
 
-  const filtered = sessions.filter(s => {
-    if (isArchived(s.client)) return false; // archived clients are hidden here
-    if (filterClient && s.client !== filterClient) return false;
-    if (filterStep === 'COMPLETE') return s.status === 'COMPLETE';
-    if (filterStep && s.status !== filterStep) return false;
-    return true;
-  });
+  const filtered = sortSessionsBy(filteredAllSessions(), allSortCol, allSortAsc);
 
   document.getElementById('sessions-count').textContent = `${filtered.length} of ${sessions.length} sessions`;
+  updateAllSortArrows();
 
   document.getElementById('all-tbody').innerHTML = filtered.length
     ? filtered.map(s => {
@@ -3372,6 +3446,7 @@ function backupData() {
     // Renée pickle system — including which sessions have already paid out, so a
     // restored backup can't re-trigger drops for sessions completed before.
     brineInventory: (typeof brineInventory !== 'undefined' ? brineInventory : {}),
+    pickleProgress: (typeof pickleProgress !== 'undefined' ? pickleProgress : {}),
     pickleUnlocked: (typeof pickleUnlocked !== 'undefined' ? pickleUnlocked : [STARTER_FORM]),
     pickleCurrent: (typeof pickleCurrent !== 'undefined' ? pickleCurrent : STARTER_FORM),
     rewardedSessions: (typeof rewardedSessions !== 'undefined' ? [...rewardedSessions] : []),
@@ -3481,6 +3556,9 @@ function normalizeImportedData(data) {
     out.brineInventory = {};
     BRINE_KEYS.forEach(k => { const n = Math.max(0, Math.floor(Number(data.brineInventory[k]) || 0)); if (n) out.brineInventory[k] = n; });
   }
+  if (data.pickleProgress && typeof data.pickleProgress === 'object' && !Array.isArray(data.pickleProgress)) {
+    out.pickleProgress = data.pickleProgress; // fully validated in applyImport via sanitizePickleProgress
+  }
   // Retired form ids from older builds are remapped, not dropped, so importing an
   // old backup keeps the collection it earned.
   const migrateId = id => PICKLE_ID_ALIASES[id] || id;
@@ -3544,6 +3622,7 @@ function applyImport(clean, fileName, snapshotSaved) {
   if (clean.brineInventory) brineInventory = clean.brineInventory;
   if (clean.pickleUnlocked) pickleUnlocked = clean.pickleUnlocked;
   if (clean.pickleCurrent) pickleCurrent = clean.pickleCurrent;
+  pickleProgress = sanitizePickleProgress(clean.pickleProgress || {}, pickleUnlocked);
   // When the SESSIONS were replaced but the backup carries no reward ledger
   // (e.g. an older or hand-made backup), keeping the previous dataset's ledger
   // would silently mark id-colliding imported sessions as already paid. Reset
@@ -4064,6 +4143,101 @@ function updateSortArrows() {
 
 
 
+// ── All Sessions: independent column sort + per-step select-all ───────────────
+// The All Sessions table keeps its OWN sort state (separate from the Home table's
+// dashSortCol) so sorting one view never disturbs the other.
+var allSortCol = 'date';
+var allSortAsc = false; // default: newest appointments first
+
+function setAllSort(col) {
+  if (allSortCol === col) {
+    allSortAsc = !allSortAsc;
+  } else {
+    allSortCol = col;
+    allSortAsc = (col === 'client' || col === 'visit'); // text columns read A→Z first
+  }
+  renderAllSessions();
+}
+
+// Generic sorter for All Sessions. col is 'client' | 'visit' | 'date' | 'status'
+// | 'step0'..'step6'. Step sorts group not-done vs done, with a date tiebreak so
+// each group stays chronological.
+function sortSessionsBy(arr, col, asc) {
+  const stepMatch = /^step(\d)$/.exec(col || '');
+  return arr.slice().sort((a, b) => {
+    let va, vb;
+    if (col === 'client') {
+      va = a.client.toLowerCase(); vb = b.client.toLowerCase();
+    } else if (col === 'visit') {
+      va = parseInt(String(a.visit).replace(/\D+/g, ''), 10); if (!Number.isFinite(va)) va = -1;
+      vb = parseInt(String(b.visit).replace(/\D+/g, ''), 10); if (!Number.isFinite(vb)) vb = -1;
+      if (va === vb) { va = String(a.visit).toLowerCase(); vb = String(b.visit).toLowerCase(); }
+    } else if (col === 'status') {
+      va = a.steps.filter(Boolean).length; vb = b.steps.filter(Boolean).length; // by progress
+    } else if (stepMatch) {
+      const i = +stepMatch[1];
+      va = a.steps[i] ? 1 : 0; vb = b.steps[i] ? 1 : 0;
+      if (va === vb) { va = a.appt || ''; vb = b.appt || ''; } // chronological within a group
+    } else { // 'date'
+      va = a.appt || ''; vb = b.appt || '';
+    }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+function updateAllSortArrows() {
+  ['client','visit','date','status','step0','step1','step2','step3','step4','step5','step6'].forEach(col => {
+    const th = document.getElementById('th-all-' + col);
+    if (!th) return;
+    const arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    if (allSortCol === col) {
+      arrow.className = 'sort-arrow sort-arrow-active ' + (allSortAsc ? 'sort-asc' : 'sort-desc');
+      th.setAttribute('aria-sort', allSortAsc ? 'ascending' : 'descending');
+    } else {
+      arrow.className = 'sort-arrow';
+      th.setAttribute('aria-sort', 'none');
+    }
+  });
+}
+
+// Column select-all: toggle one step for every session currently shown on the
+// All Sessions page. If they're all already done it clears them; otherwise it
+// marks them all done. The whole batch is a single undo entry.
+function bulkStep(stepIdx) {
+  const shown = filteredAllSessions();
+  if (!shown.length) return;
+  const label = STEP_NAMES[stepIdx] || ('step ' + (stepIdx + 1));
+  const allDone = shown.every(s => s.steps[stepIdx]);
+  const target = allDone ? 0 : 1;
+  const affected = shown.filter(s => (s.steps[stepIdx] ? 1 : 0) !== target);
+  if (!affected.length) return;
+
+  const n = affected.length;
+  const clientVal = (document.getElementById('all-filter-client') || {}).value;
+  const scope = clientVal ? ('For ' + clientVal + ', this ') : 'This ';
+  showConfirmModal(
+    (target ? 'Mark “' : 'Clear “') + label + '” for ' + n + ' session' + (n > 1 ? 's' : '') + '?',
+    scope + 'applies to every session currently shown. You can undo it in one step.',
+    target ? 'Mark all done' : 'Clear all',
+    () => {
+      pushUndo({ type: 'bulk-steps', label, changes: affected.map(s => ({ id: s.id, steps: [...s.steps] })) });
+      let anyComplete = false;
+      affected.forEach(s => {
+        s.steps[stepIdx] = target;
+        s.status = deriveStatus(s.steps);
+        if (target && s.steps.every(Boolean)) { rewardIfNewlyComplete(s); anyComplete = true; }
+      });
+      saveSessions();
+      renderAll();
+      if (anyComplete) launchConfetti();
+    },
+    target ? 'var(--success)' : 'var(--error)'
+  );
+}
+
 // (Client Manager opener lives with the rest of the Client Manager code.)
 
 
@@ -4150,13 +4324,15 @@ function reneeImgSrc(form) { return (form && RENEE_IMG[form.img]) || ''; }
 
 // ── Pickle state (persisted under its own keys — never collides with the old
 //    removed game's `pickleGame`/`renee*` keys, which init still clears) ──
-let brineInventory = {};                 // ingredient key -> count
+let brineInventory = {};                 // ingredient key -> count (the shared, unallocated pool)
+let pickleProgress = {};                  // formId -> { ingredientKey: count } dragged INTO that form
 let pickleUnlocked = [STARTER_FORM];      // form ids owned
 let pickleCurrent  = STARTER_FORM;        // form id currently displayed
 let rewardedSessions = new Set();        // session ids that have already paid out
 
 function savePickleState() {
   safeSet('brineInventory', JSON.stringify(brineInventory));
+  safeSet('pickleProgress', JSON.stringify(pickleProgress));
   safeSet('pickleUnlocked', JSON.stringify(pickleUnlocked));
   safeSet('pickleCurrent', pickleCurrent);
   saveRewardedSessions();
@@ -4185,6 +4361,9 @@ function loadPickleState() {
 
   const cur = migrateId(safeGet('pickleCurrent') || '');
   pickleCurrent = (cur && pickleUnlocked.includes(cur)) ? cur : STARTER_FORM;
+
+  try { pickleProgress = sanitizePickleProgress(JSON.parse(safeGet('pickleProgress') || '{}'), pickleUnlocked); }
+  catch (e) { pickleProgress = {}; }
 
   try { const r = JSON.parse(safeGet('rewardedSessions') || '[]'); rewardedSessions = new Set(Array.isArray(r) ? r.map(Number).filter(Number.isFinite) : []); }
   catch (e) { rewardedSessions = new Set(); }
@@ -4243,18 +4422,91 @@ function showReneeReward(session, dropKeys) {
 }
 function hideReneeReward() { const b = document.getElementById('renee-reward-bar'); if (b) b.style.display = 'none'; }
 
-// ── Unlock / select ──
-function canAfford(form) {
-  return Object.keys(form.cost).every(k => (brineInventory[k] || 0) >= form.cost[k]);
+// ── Per-form ingredient allocation (drag-and-drop) + unlock / select ──
+// Each locked form has its OWN ingredient slots that start empty. Dragging an
+// ingredient from the Brine Inventory MOVES one unit out of the shared pool into
+// that specific form — so the same salt can never look "already added" on every
+// form that happens to need salt. A form unlocks once its own slots are full.
+
+// Clamp a stored/imported progress map to the current roster: known forms only,
+// still-locked only, known ingredients only, and never more than the form needs.
+function sanitizePickleProgress(obj, unlocked) {
+  const out = {};
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+  PICKLE_FORMS.forEach(f => {
+    if (!f.cost || !Object.keys(f.cost).length) return;      // starter/free forms hold no progress
+    if (unlocked && unlocked.includes(f.id)) return;         // already owned → nothing to fill
+    const src = obj[f.id];
+    if (!src || typeof src !== 'object') return;
+    const rec = {};
+    Object.keys(f.cost).forEach(k => {
+      const n = Math.max(0, Math.min(f.cost[k], Math.floor(Number(src[k]) || 0)));
+      if (n) rec[k] = n;
+    });
+    if (Object.keys(rec).length) out[f.id] = rec;
+  });
+  return out;
 }
+
+function progOf(formId, key) {
+  return (pickleProgress[formId] && pickleProgress[formId][key]) || 0;
+}
+// A form is ready when every one of its ingredient slots is filled.
+function formReady(form) {
+  return Object.keys(form.cost).every(k => progOf(form.id, k) >= form.cost[k]);
+}
+
+// Move one unit from the shared pool into a form's slot (the drop action).
+function allocateIngredient(formId, key) {
+  const form = PICKLE_FORMS.find(f => f.id === formId);
+  if (!form || pickleUnlocked.includes(formId)) return;
+  if (!(key in form.cost)) return;                     // this form doesn't use that ingredient
+  if ((brineInventory[key] || 0) <= 0) return;         // none left in the pool
+  if (progOf(formId, key) >= form.cost[key]) return;   // that slot is already full
+  brineInventory[key] -= 1; if (brineInventory[key] <= 0) delete brineInventory[key];
+  if (!pickleProgress[formId]) pickleProgress[formId] = {};
+  pickleProgress[formId][key] = progOf(formId, key) + 1;
+  savePickleState();
+  renderRenee();
+}
+// Put one unit back into the pool (click an allocated slot) — never trap ingredients.
+function returnIngredient(formId, key) {
+  if (progOf(formId, key) <= 0) return;
+  pickleProgress[formId][key] -= 1;
+  if (pickleProgress[formId][key] <= 0) delete pickleProgress[formId][key];
+  if (pickleProgress[formId] && !Object.keys(pickleProgress[formId]).length) delete pickleProgress[formId];
+  brineInventory[key] = (brineInventory[key] || 0) + 1;
+  savePickleState();
+  renderRenee();
+}
+
+// HTML5 drag-and-drop glue. Inventory chips are the sources; locked cards the targets.
+function reneeDragStart(ev, key) {
+  ev.dataTransfer.setData('text/plain', key);
+  ev.dataTransfer.effectAllowed = 'move';
+}
+function reneeDragOver(ev) {
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  ev.currentTarget.classList.add('renee-drop-hover');
+}
+function reneeDragLeave(ev) { ev.currentTarget.classList.remove('renee-drop-hover'); }
+function reneeDrop(ev, formId) {
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('renee-drop-hover');
+  const key = ev.dataTransfer.getData('text/plain');
+  if (key) allocateIngredient(formId, key);
+}
+
 function unlockPickle(formId) {
   const form = PICKLE_FORMS.find(f => f.id === formId);
-  if (!form || pickleUnlocked.includes(formId) || !canAfford(form)) return;
-  Object.keys(form.cost).forEach(k => { brineInventory[k] -= form.cost[k]; if (brineInventory[k] <= 0) delete brineInventory[k]; });
+  if (!form || pickleUnlocked.includes(formId) || !formReady(form)) return;
+  delete pickleProgress[formId];      // the ingredients dragged in are consumed on unlock
   pickleUnlocked.push(formId);
   pickleCurrent = formId;             // auto-display the newly unlocked form
   savePickleState();
   renderRenee();
+  launchConfetti();                   // the real celebration lands on unlock
 }
 function selectPickle(formId) {
   if (!pickleUnlocked.includes(formId)) return;
@@ -4289,12 +4541,17 @@ function renderRenee() {
       '<div class="brine-grid">' +
         BRINE_KEYS.map(k => {
           const n = brineInventory[k] || 0;
-          return '<div class="brine-chip' + (n ? '' : ' brine-empty') + '">' +
+          const drag = n > 0 ? ' draggable="true" ondragstart="reneeDragStart(event,\'' + k + '\')"' : '';
+          const title = n > 0
+            ? 'Drag onto a locked Renée below to add ' + BRINE_INGREDIENTS[k].label
+            : 'Complete client sessions to earn ' + BRINE_INGREDIENTS[k].label;
+          return '<div class="brine-chip' + (n ? ' brine-draggable' : ' brine-empty') + '"' + drag + ' title="' + esc(title) + '">' +
             '<span class="brine-emoji">' + BRINE_INGREDIENTS[k].emoji + '</span>' +
             '<span class="brine-label">' + BRINE_INGREDIENTS[k].label + '</span>' +
             '<span class="brine-count">' + n + '</span></div>';
         }).join('') +
       '</div>' +
+      '<div class="renee-drop-hint">Drag an ingredient onto a locked Renée below to fill its recipe. Each form has its own slots — nothing is spent until you drop it in (click a filled slot to take it back).</div>' +
     '</div>';
 
   const cardsHtml = PICKLE_FORMS.map(f => {
@@ -4307,14 +4564,20 @@ function renderRenee() {
         : '<button class="renee-btn renee-btn-select" onclick="selectPickle(\'' + f.id + '\')">Set as current</button>';
     } else {
       const costHtml = Object.keys(f.cost).map(k => {
-        const have = brineInventory[k] || 0, need = f.cost[k], okc = have >= need;
-        return '<span class="renee-cost' + (okc ? ' renee-cost-ok' : '') + '">' + BRINE_INGREDIENTS[k].emoji + ' ' + have + '/' + need + ' ' + BRINE_INGREDIENTS[k].label + '</span>';
+        const have = progOf(f.id, k), need = f.cost[k], okc = have >= need;
+        const canReturn = have > 0;
+        return '<span class="renee-cost' + (okc ? ' renee-cost-ok' : '') + (canReturn ? ' renee-cost-filled' : '') + '"' +
+          (canReturn ? ' onclick="returnIngredient(\'' + f.id + '\',\'' + k + '\')" title="Click to return one ' + esc(BRINE_INGREDIENTS[k].label) + ' to your inventory"' : '') +
+          '>' + BRINE_INGREDIENTS[k].emoji + ' ' + have + '/' + need + ' ' + BRINE_INGREDIENTS[k].label + '</span>';
       }).join('');
-      const affordable = canAfford(f);
+      const ready = formReady(f);
       action = '<div class="renee-costs">' + costHtml + '</div>' +
-        '<button class="renee-btn renee-btn-unlock" onclick="unlockPickle(\'' + f.id + '\')"' + (affordable ? '' : ' disabled') + '>' + (affordable ? 'Unlock Renée' : 'Need more brine') + '</button>';
+        '<button class="renee-btn renee-btn-unlock' + (ready ? ' renee-btn-ready' : '') + '" onclick="unlockPickle(\'' + f.id + '\')"' + (ready ? '' : ' disabled') + '>' +
+        (ready ? 'Unlock Me!' : 'Add more ingredients to unlock Renée’s next transformation!') + '</button>';
     }
-    return '<div class="renee-card ' + (unlocked ? 'renee-unlocked' : 'renee-locked') + '">' +
+    return '<div class="renee-card ' + (unlocked ? 'renee-unlocked' : 'renee-locked') + '"' +
+        (unlocked ? '' : ' ondragover="reneeDragOver(event)" ondragleave="reneeDragLeave(event)" ondrop="reneeDrop(event,\'' + f.id + '\')"') +
+        '>' +
         '<div class="renee-card-top">' +
           // Locked forms stay a mystery — lock tile only, no art spoiler.
           '<div class="renee-card-emoji' + (unlocked ? '' : ' renee-card-lock') + '" style="background:' + (unlocked ? reneeTint(f.accent) : 'var(--surface-off2)') + '">' +
@@ -4482,6 +4745,9 @@ document.addEventListener('keydown', e => {
 //    a proven-safe pattern in this app's webview. ──
 let reneeRoamEnabled = true;
 let reneeRoamTimer = null;
+let reneeHideTimer = null;        // the 2-minute "on break" hide after a click
+let reneeEmoting = false;         // true while the 6–7 shrug is playing
+const RENEE_BREAK_MS = 120000;    // 2 minutes off-screen, then back to roaming
 
 function loadReneeRoam() {
   const v = safeGet('reneeRoam');
@@ -4493,7 +4759,7 @@ function ensureRoamerEl() {
   if (!el) {
     el = document.createElement('div');
     el.id = 'renee-roamer';
-    el.innerHTML = '<span class="renee-roamer-inner" onclick="switchView(\'renee\')" role="button" tabindex="-1" title="Renée — open the pickle jar"></span>';
+    el.innerHTML = '<span class="renee-roamer-inner" onclick="reneeEmote()" role="button" tabindex="-1" title="Renée — give her a poke"></span>';
     document.body.appendChild(el);
   }
   return el;
@@ -4669,8 +4935,49 @@ function reneeOnScroll() {
 window.addEventListener('scroll', reneeOnScroll, { passive: true });
 window.addEventListener('resize', () => { if (reneeRoamEnabled && !reneeFlying) reneeRoamHop(); });
 
+// Clicking the roaming Renée no longer opens the pickle jar. Instead she does a
+// little "6–7" shrug — rocking her hands like weighing scales, eyes up — then
+// takes a two-minute breather off-screen before wandering back on her own.
+function reneeEmote() {
+  const el = document.getElementById('renee-roamer');
+  if (!el || reneeEmoting) return;               // ignore repeat clicks mid-gesture
+  reneeEmoting = true;
+
+  // Freeze any roaming motion so the gesture plays put, right where she stands.
+  clearTimeout(reneeRoamTimer);
+  clearTimeout(reneeIdleTimer);
+  clearTimeout(reneeHopWatchdog);
+  cancelAnimationFrame(reneeRaf);
+  reneeFlying = false;
+  el.classList.remove('renee-flying', 'renee-landing');
+
+  // After the shrug: vanish, then come back roaming once the 2 minutes are up
+  // (unless the user turned roaming off in the meantime).
+  const takeBreak = () => {
+    reneeEmoting = false;
+    el.classList.remove('renee-sixseven');
+    el.style.display = 'none';
+    reneePerchEl = null;
+    clearTimeout(reneeHideTimer);
+    reneeHideTimer = setTimeout(() => {
+      reneeHideTimer = null;
+      if (reneeRoamEnabled) startReneeRoam();
+    }, RENEE_BREAK_MS);
+  };
+
+  if (prefersReducedMotion()) { takeBreak(); return; }  // no animation, just the break
+
+  el.classList.remove('renee-sixseven');
+  void el.offsetWidth;                           // reflow so the animation restarts
+  el.classList.add('renee-sixseven');
+  setTimeout(takeBreak, 1600);                   // matches the reneeSixSeven duration
+}
+
 function startReneeRoam() {
   const el = ensureRoamerEl();
+  clearTimeout(reneeHideTimer); reneeHideTimer = null;   // a fresh start cancels any pending break
+  reneeEmoting = false;
+  el.classList.remove('renee-sixseven');
   updateRoamerFace();
   el.style.display = 'block';
   const place = () => { const t = reneePickTarget(); reneePerchEl = t.el; reneePerchDX = t.dx; reneeSetPos(t.x, t.y); };
@@ -4684,11 +4991,13 @@ function stopReneeRoam() {
   clearTimeout(reneeRoamTimer);
   clearTimeout(reneeIdleTimer);
   clearTimeout(reneeHopWatchdog);
+  clearTimeout(reneeHideTimer); reneeHideTimer = null;   // drop any pending "return from break"
   cancelAnimationFrame(reneeRaf);
   reneeFlying = false;
+  reneeEmoting = false;
   reneePerchEl = null;
   const el = document.getElementById('renee-roamer');
-  if (el) { el.style.display = 'none'; el.classList.remove('renee-flying', 'renee-landing'); }
+  if (el) { el.style.display = 'none'; el.classList.remove('renee-flying', 'renee-landing', 'renee-sixseven'); }
 }
 
 function setReneeRoam(on) {

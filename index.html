@@ -719,6 +719,22 @@ tr.overdue-row td:first-child{border-left:3px solid var(--error)}
 .renee-cost.renee-cost-filled:hover { border-color:var(--error); color:var(--error); }
 .renee-btn-ready { background:var(--success); color:#fff; cursor:pointer; }
 .renee-drop-hint { font-size:0.78rem; color:var(--muted); margin-top:0.6rem; }
+/* Trade ingredients (flat 3:1, any-to-any) */
+.trade-block { margin-top:0.9rem; border-top:1px solid var(--divider); padding-top:0.85rem; }
+.trade-head { display:flex; align-items:center; justify-content:space-between; }
+.trade-title { font-weight:700; font-size:0.95rem; }
+.trade-rate { font-size:0.7rem; font-weight:700; color:var(--primary); background:var(--primary-hl); padding:0.15rem 0.5rem; border-radius:999px; }
+.trade-sub { font-size:0.78rem; color:var(--muted); margin:0.15rem 0 0.7rem; }
+.trade-row { display:flex; align-items:flex-end; gap:0.5rem; flex-wrap:wrap; background:var(--surface-off); border:1px solid var(--divider); border-radius:12px; padding:0.7rem; }
+.trade-field { flex:1; min-width:120px; display:flex; flex-direction:column; gap:0.2rem; }
+.trade-lbl { font-size:0.7rem; color:var(--muted); }
+.trade-sel { padding:0.45rem; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); font-size:0.85rem; font-family:inherit; }
+.trade-arrow { font-size:1.2rem; color:var(--muted); padding-bottom:0.35rem; }
+.trade-btn { background:var(--primary); color:#fff; }
+.trade-btn:disabled { background:var(--surface-off2); color:var(--muted); cursor:not-allowed; }
+.trade-note { font-size:0.8rem; margin-top:0.55rem; min-height:1.1em; }
+.trade-note-ok { color:var(--success); }
+.trade-note-warn { color:var(--error); }
 @media (max-width:700px){ .brine-grid { grid-template-columns:repeat(2,1fr); } .renee-current { flex-direction:column; text-align:center; } }
 /* Roaming Renée — hops around and lands ON things (cards, rows, calendar cells).
    Three transform layers, so position / facing / squash never fight each other:
@@ -1365,6 +1381,8 @@ function updateUndoBtn() {
   } else if (top.type === 'bulk-steps') {
     const c = top.changes ? top.changes.length : 0;
     btn.title = 'Undo: “' + (top.label || 'step') + '” for ' + c + ' session' + (c === 1 ? '' : 's');
+  } else if (top.type === 'brine-inv') {
+    btn.title = 'Undo: ingredient trade';
   } else {
     btn.title = 'Undo last step change';
   }
@@ -1489,6 +1507,12 @@ function applySnap(snap) {
     });
     saveSessions();
     inverse = { type: 'bulk-steps', label: snap.label, changes: inv };
+  } else if (snap.type === 'brine-inv') {
+    // Ingredient trade: swap the whole small inventory map, capturing the current
+    // one as the inverse so undo and redo both work.
+    inverse = { type: 'brine-inv', prev: Object.assign({}, brineInventory) };
+    brineInventory = Object.assign({}, snap.prev);
+    savePickleState();
   } else {
     // Legacy step toggle snapshot: {id, steps}
     const s = sessions.find(x => x.id === snap.id);
@@ -4341,6 +4365,9 @@ function reneeImgSrc(form) { return (form && RENEE_IMG[form.img]) || ''; }
 //    removed game's `pickleGame`/`renee*` keys, which init still clears) ──
 let brineInventory = {};                 // ingredient key -> count (the shared, unallocated pool)
 let pickleProgress = {};                  // formId -> { ingredientKey: count } dragged INTO that form
+const TRADE_RATE = 3;                     // spend 3 of one ingredient to get 1 of another
+let tradeGive = 'salt';                    // current "spend" selection in the trade panel
+let tradeGet  = 'dill';                    // current "receive" selection
 let pickleUnlocked = [STARTER_FORM];      // form ids owned
 let pickleCurrent  = STARTER_FORM;        // form id currently displayed
 let rewardedSessions = new Set();        // session ids that have already paid out
@@ -4495,6 +4522,49 @@ function returnIngredient(formId, key) {
   renderRenee();
 }
 
+// ── Trade ingredients: flat 3:1, any-to-any ──
+// Spend TRADE_RATE (3) of one ingredient to gain 1 of another. One undo covers it.
+function setTradeGive(k) { if (BRINE_INGREDIENTS[k]) tradeGive = k; renderRenee(); }
+function setTradeGet(k)  { if (BRINE_INGREDIENTS[k]) tradeGet  = k; renderRenee(); }
+function canTrade() {
+  return tradeGive !== tradeGet && (brineInventory[tradeGive] || 0) >= TRADE_RATE;
+}
+function doTrade() {
+  if (!canTrade()) return;
+  pushUndo({ type: 'brine-inv', prev: Object.assign({}, brineInventory) });
+  brineInventory[tradeGive] -= TRADE_RATE;
+  if (brineInventory[tradeGive] <= 0) delete brineInventory[tradeGive];
+  brineInventory[tradeGet] = (brineInventory[tradeGet] || 0) + 1;
+  savePickleState();
+  renderRenee();
+}
+// The trade panel markup, shown under the Brine Inventory grid.
+function tradeBlockHtml() {
+  const opts = sel => BRINE_KEYS.map(k =>
+    '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' +
+    BRINE_INGREDIENTS[k].emoji + ' ' + BRINE_INGREDIENTS[k].label + ' (' + (brineInventory[k] || 0) + ')</option>'
+  ).join('');
+  const g = tradeGive, r = tradeGet, have = brineInventory[g] || 0;
+  let msg, cls;
+  if (g === r) { msg = 'Pick two different ingredients.'; cls = 'trade-note trade-note-warn'; }
+  else if (have < TRADE_RATE) { msg = 'You need at least ' + TRADE_RATE + ' ' + BRINE_INGREDIENTS[g].label + ' to trade (you have ' + have + ').'; cls = 'trade-note trade-note-warn'; }
+  else { msg = 'Spend ' + TRADE_RATE + ' ' + BRINE_INGREDIENTS[g].emoji + ' ' + BRINE_INGREDIENTS[g].label + ' → gain 1 ' + BRINE_INGREDIENTS[r].emoji + ' ' + BRINE_INGREDIENTS[r].label + '.'; cls = 'trade-note trade-note-ok'; }
+  const ok = canTrade();
+  return '<div class="trade-block">' +
+      '<div class="trade-head"><span class="trade-title">🔄 Trade ingredients</span><span class="trade-rate">3 → 1</span></div>' +
+      '<div class="trade-sub">Turn a surplus ingredient into one you need. Spend 3, get 1.</div>' +
+      '<div class="trade-row">' +
+        '<label class="trade-field"><span class="trade-lbl">Spend 3 ×</span>' +
+          '<select class="trade-sel" aria-label="Ingredient to spend" onchange="setTradeGive(this.value)">' + opts(g) + '</select></label>' +
+        '<span class="trade-arrow" aria-hidden="true">→</span>' +
+        '<label class="trade-field"><span class="trade-lbl">Get 1 ×</span>' +
+          '<select class="trade-sel" aria-label="Ingredient to receive" onchange="setTradeGet(this.value)">' + opts(r) + '</select></label>' +
+        '<button class="renee-btn trade-btn" onclick="doTrade()"' + (ok ? '' : ' disabled') + '>Trade</button>' +
+      '</div>' +
+      '<div class="' + cls + '">' + esc(msg) + '</div>' +
+    '</div>';
+}
+
 // HTML5 drag-and-drop glue. Inventory chips are the sources; locked cards the targets.
 function reneeDragStart(ev, key) {
   ev.dataTransfer.setData('text/plain', key);
@@ -4567,6 +4637,7 @@ function renderRenee() {
         }).join('') +
       '</div>' +
       '<div class="renee-drop-hint">Drag an ingredient onto a locked Renée below to fill its recipe. Each form has its own slots — nothing is spent until you drop it in (click a filled slot to take it back).</div>' +
+      tradeBlockHtml() +
     '</div>';
 
   const cardsHtml = PICKLE_FORMS.map(f => {

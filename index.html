@@ -4365,7 +4365,8 @@ function reneeImgSrc(form) { return (form && RENEE_IMG[form.img]) || ''; }
 //    removed game's `pickleGame`/`renee*` keys, which init still clears) ──
 let brineInventory = {};                 // ingredient key -> count (the shared, unallocated pool)
 let pickleProgress = {};                  // formId -> { ingredientKey: count } dragged INTO that form
-const TRADE_RATE = 3;                     // spend 3 of one ingredient to get 1 of another
+const TRADE_RATE = 3;                     // default: spend 3 of one ingredient to get 1 of another
+const TRADE_RATE_OVERRIDES = { 'chili flakes': 2, 'sugar': 2 }; // scarcer ingredients cost less to acquire
 let tradeGive = 'salt';                    // current "spend" selection in the trade panel
 let tradeGet  = 'dill';                    // current "receive" selection
 let pickleUnlocked = [STARTER_FORM];      // form ids owned
@@ -4526,13 +4527,14 @@ function returnIngredient(formId, key) {
 // Spend TRADE_RATE (3) of one ingredient to gain 1 of another. One undo covers it.
 function setTradeGive(k) { if (BRINE_INGREDIENTS[k]) tradeGive = k; renderRenee(); }
 function setTradeGet(k)  { if (BRINE_INGREDIENTS[k]) tradeGet  = k; renderRenee(); }
+function tradeCost(getKey) { return TRADE_RATE_OVERRIDES[getKey] || TRADE_RATE; }
 function canTrade() {
-  return tradeGive !== tradeGet && (brineInventory[tradeGive] || 0) >= TRADE_RATE;
+  return tradeGive !== tradeGet && (brineInventory[tradeGive] || 0) >= tradeCost(tradeGet);
 }
 function doTrade() {
   if (!canTrade()) return;
   pushUndo({ type: 'brine-inv', prev: Object.assign({}, brineInventory) });
-  brineInventory[tradeGive] -= TRADE_RATE;
+  brineInventory[tradeGive] -= tradeCost(tradeGet);
   if (brineInventory[tradeGive] <= 0) delete brineInventory[tradeGive];
   brineInventory[tradeGet] = (brineInventory[tradeGet] || 0) + 1;
   savePickleState();
@@ -4544,17 +4546,17 @@ function tradeBlockHtml() {
     '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' +
     BRINE_INGREDIENTS[k].emoji + ' ' + BRINE_INGREDIENTS[k].label + ' (' + (brineInventory[k] || 0) + ')</option>'
   ).join('');
-  const g = tradeGive, r = tradeGet, have = brineInventory[g] || 0;
+  const g = tradeGive, r = tradeGet, have = brineInventory[g] || 0, cost = tradeCost(r);
   let msg, cls;
   if (g === r) { msg = 'Pick two different ingredients.'; cls = 'trade-note trade-note-warn'; }
-  else if (have < TRADE_RATE) { msg = 'You need at least ' + TRADE_RATE + ' ' + BRINE_INGREDIENTS[g].label + ' to trade (you have ' + have + ').'; cls = 'trade-note trade-note-warn'; }
-  else { msg = 'Spend ' + TRADE_RATE + ' ' + BRINE_INGREDIENTS[g].emoji + ' ' + BRINE_INGREDIENTS[g].label + ' → gain 1 ' + BRINE_INGREDIENTS[r].emoji + ' ' + BRINE_INGREDIENTS[r].label + '.'; cls = 'trade-note trade-note-ok'; }
+  else if (have < cost) { msg = 'You need at least ' + cost + ' ' + BRINE_INGREDIENTS[g].label + ' to trade (you have ' + have + ').'; cls = 'trade-note trade-note-warn'; }
+  else { msg = 'Spend ' + cost + ' ' + BRINE_INGREDIENTS[g].emoji + ' ' + BRINE_INGREDIENTS[g].label + ' → gain 1 ' + BRINE_INGREDIENTS[r].emoji + ' ' + BRINE_INGREDIENTS[r].label + '.'; cls = 'trade-note trade-note-ok'; }
   const ok = canTrade();
   return '<div class="trade-block">' +
-      '<div class="trade-head"><span class="trade-title">🔄 Trade ingredients</span><span class="trade-rate">3 → 1</span></div>' +
-      '<div class="trade-sub">Turn a surplus ingredient into one you need. Spend 3, get 1.</div>' +
+      '<div class="trade-head"><span class="trade-title">🔄 Trade ingredients</span><span class="trade-rate">' + cost + ' → 1</span></div>' +
+      '<div class="trade-sub">Turn a surplus ingredient into one you need. Most cost 3 for 1; 🌶️ Chili Flakes and 🍬 Sugar are 2 for 1.</div>' +
       '<div class="trade-row">' +
-        '<label class="trade-field"><span class="trade-lbl">Spend 3 ×</span>' +
+        '<label class="trade-field"><span class="trade-lbl">Spend ' + cost + ' ×</span>' +
           '<select class="trade-sel" aria-label="Ingredient to spend" onchange="setTradeGive(this.value)">' + opts(g) + '</select></label>' +
         '<span class="trade-arrow" aria-hidden="true">→</span>' +
         '<label class="trade-field"><span class="trade-lbl">Get 1 ×</span>' +

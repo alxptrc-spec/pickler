@@ -4527,14 +4527,16 @@ function returnIngredient(formId, key) {
 // Spend TRADE_RATE (3) of one ingredient to gain 1 of another. One undo covers it.
 function setTradeGive(k) { if (BRINE_INGREDIENTS[k]) tradeGive = k; renderRenee(); }
 function setTradeGet(k)  { if (BRINE_INGREDIENTS[k]) tradeGet  = k; renderRenee(); }
-function tradeCost(getKey) { return TRADE_RATE_OVERRIDES[getKey] || TRADE_RATE; }
+// Cost is keyed to the ingredient being SPENT: chili flakes and sugar go 2:1
+// (offload the surplus cheaply), everything else 3:1.
+function tradeCost(giveKey) { return TRADE_RATE_OVERRIDES[giveKey] || TRADE_RATE; }
 function canTrade() {
-  return tradeGive !== tradeGet && (brineInventory[tradeGive] || 0) >= tradeCost(tradeGet);
+  return tradeGive !== tradeGet && (brineInventory[tradeGive] || 0) >= tradeCost(tradeGive);
 }
 function doTrade() {
   if (!canTrade()) return;
   pushUndo({ type: 'brine-inv', prev: Object.assign({}, brineInventory) });
-  brineInventory[tradeGive] -= tradeCost(tradeGet);
+  brineInventory[tradeGive] -= tradeCost(tradeGive);
   if (brineInventory[tradeGive] <= 0) delete brineInventory[tradeGive];
   brineInventory[tradeGet] = (brineInventory[tradeGet] || 0) + 1;
   savePickleState();
@@ -4546,7 +4548,7 @@ function tradeBlockHtml() {
     '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' +
     BRINE_INGREDIENTS[k].emoji + ' ' + BRINE_INGREDIENTS[k].label + ' (' + (brineInventory[k] || 0) + ')</option>'
   ).join('');
-  const g = tradeGive, r = tradeGet, have = brineInventory[g] || 0, cost = tradeCost(r);
+  const g = tradeGive, r = tradeGet, have = brineInventory[g] || 0, cost = tradeCost(g);
   let msg, cls;
   if (g === r) { msg = 'Pick two different ingredients.'; cls = 'trade-note trade-note-warn'; }
   else if (have < cost) { msg = 'You need at least ' + cost + ' ' + BRINE_INGREDIENTS[g].label + ' to trade (you have ' + have + ').'; cls = 'trade-note trade-note-warn'; }
@@ -4554,7 +4556,7 @@ function tradeBlockHtml() {
   const ok = canTrade();
   return '<div class="trade-block">' +
       '<div class="trade-head"><span class="trade-title">🔄 Trade ingredients</span><span class="trade-rate">' + cost + ' → 1</span></div>' +
-      '<div class="trade-sub">Turn a surplus ingredient into one you need. Most cost 3 for 1; 🌶️ Chili Flakes and 🍬 Sugar are 2 for 1.</div>' +
+      '<div class="trade-sub">Turn a surplus ingredient into one you need. Most cost 3 for 1; spending 🌶️ Chili Flakes or 🍬 Sugar is 2 for 1.</div>' +
       '<div class="trade-row">' +
         '<label class="trade-field"><span class="trade-lbl">Spend ' + cost + ' ×</span>' +
           '<select class="trade-sel" aria-label="Ingredient to spend" onchange="setTradeGive(this.value)">' + opts(g) + '</select></label>' +
